@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -108,7 +109,9 @@
             color: white;
             padding: 10px;
             font-size: 18px;
-            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .kanban-board {
             display: flex;
@@ -163,7 +166,10 @@
     <div id="kanban-areas">
         {% for assignee, tasks in grouped_tasks.items() %}
         <div class="area" id="kanban-assignee-{{ assignee }}">
-            <div class="area-header">{{ assignee }}</div>
+            <div class="area-header">
+                {{ assignee }}
+                <span>Количество человеко-часов: {{ tasks | sum(attribute='estimation') }}</span>
+            </div>
             <div class="kanban-board">
                 <div class="column">
                     <h2>Бэклог</h2>
@@ -175,6 +181,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -188,6 +195,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -201,6 +209,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -209,7 +218,10 @@
         {% endfor %}
         {% for system, tasks in grouped_systems.items() %}
         <div class="area" id="kanban-system-{{ system }}">
-            <div class="area-header">{{ system }}</div>
+            <div class="area-header">
+                {{ system }}
+                <span>Количество человеко-часов: {{ tasks | sum(attribute='estimation') }}</span>
+            </div>
             <div class="kanban-board">
                 <div class="column">
                     <h2>Бэклог</h2>
@@ -221,6 +233,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -234,6 +247,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -247,6 +261,7 @@
                         <div><strong>Дата:</strong> {{ task.date }}</div>
                         <div><strong>Статус:</strong> {{ task.status }}</div>
                         <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
                     </div>
                     {% endfor %}
                 </div>
