@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban Board</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f5;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar {
+            width: 800px;
+            background-color: #333;
+            color: white;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            transform: translateX(-800px);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+        }
+        .sidebar.open {
+            transform: translateX(0);
+        }
+        .sidebar-columns {
+            display: flex;
+        }
+        .sidebar-column {
+            flex: 1;
+            border-right: 1px solid #444;
+        }
+        .sidebar-column:last-child {
+            border-right: none;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            white-space: nowrap;
+            overflow-x: hidden;
+        }
+        .sidebar ul li {
+            padding: 15px;
+            border-bottom: 1px solid #444;
+            cursor: pointer;
+            text-overflow: ellipsis;
+            overflow: hidden;
+        }
+        .sidebar ul li:hover {
+            background-color: #555;
+        }
+        .menu-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 50px;
+            height: 50px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            transition: left 0.3s ease;
+        }
+        .menu-button .lines {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 20px;
+            height: 15px;
+        }
+        .menu-button .lines span {
+            display: block;
+            height: 3px;
+            background-color: white;
+            border-radius: 2px;
+        }
+        .content {
+            margin-top: 80px;
+            padding: 20px;
+            width: 100%;
+        }
+        .area {
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            background-color: #fafafa;
+            overflow: hidden;
+            display: none;
+        }
+        .area.active {
+            display: block;
+            height: calc(100vh - 200px);
+        }
+        .area-header {
+            background-color: #5a9bd5;
+            color: white;
+            padding: 10px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .kanban-board {
+            display: flex;
+            gap: 10px;
+            height: 100%;
+        }
+        .column {
+            flex: 1;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-right: 1px solid #ddd;
+            overflow-y: auto;
+        }
+        .task {
+            background-color: #e9edf5;
+            margin: 5px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+<button class="menu-button" id="menuButton" onclick="toggleSidebar()">
+    <div class="lines">
+        <span></span>
+        <span></span>
+        <span></span>
+    </div>
+</button>
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-columns">
+        <div class="sidebar-column">
+            <h3 style="padding: 15px; border-bottom: 1px solid #444;">Исполнители</h3>
+            <ul>
+                {% for assignee in grouped_tasks.keys() %}
+                <li onclick="showKanbanBoard('assignee', '{{ assignee }}')">{{ assignee }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="sidebar-column">
+            <h3 style="padding: 15px; border-bottom: 1px solid #444;">Системы</h3>
+            <ul>
+                {% for system in grouped_systems.keys() %}
+                <li onclick="showKanbanBoard('system', '{{ system }}')">{{ system }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+<div class="content" id="content">
+    <div id="kanban-areas">
+        {% for assignee, tasks in grouped_tasks.items() %}
+        <div class="area" id="kanban-assignee-{{ assignee }}">
+            <div class="area-header">{{ assignee }}</div>
+            <div class="kanban-board">
+                <div class="column">
+                    <h2>Бэклог</h2>
+                    {% for task in tasks if task.status in ['В очереди', 'Анализ', 'Создано'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="column">
+                    <h2>В работе</h2>
+                    {% for task in tasks if task.status in ['В работе', 'В ожидании'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="column">
+                    <h2>Завершенные</h2>
+                    {% for task in tasks if task.status in ['Выполнено', 'Закрыто'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% for system, tasks in grouped_systems.items() %}
+        <div class="area" id="kanban-system-{{ system }}">
+            <div class="area-header">{{ system }}</div>
+            <div class="kanban-board">
+                <div class="column">
+                    <h2>Бэклог</h2>
+                    {% for task in tasks if task.status in ['В очереди', 'Анализ', 'Создано'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="column">
+                    <h2>В работе</h2>
+                    {% for task in tasks if task.status in ['В работе', 'В ожидании'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="column">
+                    <h2>Завершенные</h2>
+                    {% for task in tasks if task.status in ['Выполнено', 'Закрыто'] %}
+                    <div class="task">
+                        <div><strong>Номер:</strong> {{ task.number }}</div>
+                        <div><strong>Название:</strong> {{ task.name }}</div>
+                        <div><strong>Системы:</strong> {{ task.systems }}</div>
+                        <div><strong>Дата:</strong> {{ task.date }}</div>
+                        <div><strong>Статус:</strong> {{ task.status }}</div>
+                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const menuButton = document.getElementById('menuButton');
+        if (sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            menuButton.style.left = '20px';
+        } else {
+            sidebar.classList.add('open');
+            menuButton.style.left = '820px';
+        }
+    }
+
+    function showKanbanBoard(type, id) {
+        document.querySelectorAll('.area').forEach(area => {
+            area.classList.remove('active');
+        });
+        document.getElementById(`kanban-${type}-${id}`).classList.add('active');
+        toggleSidebar();
+    }
+</script>
+</body>
+</html>
