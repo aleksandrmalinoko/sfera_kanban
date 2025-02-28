@@ -1,295 +1,370 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kanban Board</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f5;
-            display: flex;
-            flex-direction: column;
-        }
-        .sidebar {
-            width: 800px;
-            background-color: #333;
-            color: white;
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            overflow-y: auto;
-            transform: translateX(-800px);
-            transition: transform 0.3s ease;
-            z-index: 1000;
-        }
-        .sidebar.open {
-            transform: translateX(0);
-        }
-        .sidebar-columns {
-            display: flex;
-        }
-        .sidebar-column {
-            flex: 1;
-            border-right: 1px solid #444;
-        }
-        .sidebar-column:last-child {
-            border-right: none;
-        }
-        .sidebar ul {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            white-space: nowrap;
-            overflow-x: hidden;
-        }
-        .sidebar ul li {
-            padding: 15px;
-            border-bottom: 1px solid #444;
-            cursor: pointer;
-            text-overflow: ellipsis;
-            overflow: hidden;
-        }
-        .sidebar ul li:hover {
-            background-color: #555;
-        }
-        .menu-button {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            width: 50px;
-            height: 50px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1001;
-            transition: left 0.3s ease;
-        }
-        .menu-button .lines {
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            width: 20px;
-            height: 15px;
-        }
-        .menu-button .lines span {
-            display: block;
-            height: 3px;
-            background-color: white;
-            border-radius: 2px;
-        }
-        .content {
-            margin-top: 80px;
-            padding: 20px;
-            width: 100%;
-        }
-        .area {
-            margin: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            background-color: #fafafa;
-            overflow: hidden;
-            display: none;
-        }
-        .area.active {
-            display: block;
-            height: calc(100vh - 200px);
-        }
-        .area-header {
-            background-color: #5a9bd5;
-            color: white;
-            padding: 10px;
-            font-size: 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .kanban-board {
-            display: flex;
-            gap: 10px;
-            height: 100%;
-        }
-        .column {
-            flex: 1;
-            padding: 10px;
-            background-color: #f5f5f5;
-            border-right: 1px solid #ddd;
-            overflow-y: auto;
-        }
-        .task {
-            background-color: #e9edf5;
-            margin: 5px 0;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kanban Board</title>
+  <style>
+    /* Общие стили */
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f5;
+    }
+    /* Основное содержимое: отступ слева, чтобы не пересекалось с кнопкой меню */
+    .content {
+      margin: 20px 20px 20px 80px; /* отступ слева 80px */
+      box-sizing: border-box;
+    }
+    /* Области доски */
+    .area {
+      display: none;
+      margin-bottom: 0;
+    }
+    .area.active {
+      display: block;
+      min-height: 100vh;
+    }
+    .area-header {
+      background-color: #5a9bd5;
+      color: white;
+      padding: 10px;
+      font-size: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-sizing: border-box;
+    }
+    /* Контейнер доски с горизонтальной прокруткой */
+    .board-container {
+      overflow-x: auto;
+      padding-bottom: 0;
+      height: calc(100vh - 50px);
+      box-sizing: border-box;
+    }
+    .kanban-board {
+      display: flex;
+      gap: 10px;
+      padding-right: 20px;
+      box-sizing: border-box;
+    }
+    /* Каждый столбец; ширина определяется динамически (600px для непустых, 300px для пустых) */
+    .column {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #ddd;
+      background-color: #f5f5f5;
+      box-sizing: border-box;
+    }
+    .column-header {
+      padding: 10px;
+      background-color: #eee;
+      box-sizing: border-box;
+    }
+    .column-header .column-sum {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .column-header .column-title {
+      font-size: 16px;
+      font-weight: bold;
+    }
+    /* Контент столбца с вертикальной прокруткой */
+    .column-content {
+      overflow-y: auto;
+      padding: 10px;
+      max-height: calc(100vh - 50px - 70px);
+      box-sizing: border-box;
+    }
+    /* Стиль для выделенного столбца (drop target) */
+    .column-content.drop-target {
+      border: 2px dashed #007bff;
+      background-color: #e6f7ff;
+    }
+    /* Карточка задачи */
+    .task {
+      background-color: #e9edf5;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      max-width: 580px;
+      word-wrap: break-word;
+      box-sizing: border-box;
+    }
+    .task.dragging {
+      opacity: 0.5;
+    }
+    /* Боковое меню: выдвигается из левой стороны, ширина 700px */
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 700px;
+      height: 100vh;
+      background-color: #333;
+      color: white;
+      overflow-y: auto;
+      z-index: 1001;
+      padding: 10px;
+      box-sizing: border-box;
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+    }
+    .sidebar.open {
+      transform: translateX(0);
+    }
+    /* Внутри меню – две колонки */
+    .sidebar-columns {
+      display: flex;
+      gap: 10px;
+      box-sizing: border-box;
+    }
+    .sidebar-column {
+      flex: 1;
+    }
+    .sidebar-column h3 {
+      margin: 10px 0 5px 0;
+      padding: 5px;
+      border-bottom: 1px solid #444;
+    }
+    .sidebar-column ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar-column ul li {
+      padding: 8px;
+      border-bottom: 1px solid #444;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sidebar-column ul li:hover {
+      background-color: #555;
+    }
+    /* Кнопка открытия меню: расположена в левом нижнем углу */
+    .menu-button {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 50px;
+      height: 50px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      z-index: 1002;
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 50px;
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-<button class="menu-button" id="menuButton" onclick="toggleSidebar()">
-    <div class="lines">
-        <span></span>
-        <span></span>
-        <span></span>
-    </div>
-</button>
-<div class="sidebar" id="sidebar">
+  <!-- Кнопка для показа/скрытия бокового меню -->
+  <button class="menu-button" onclick="toggleSidebar()">☰</button>
+
+  <!-- Боковое меню, выдвигающееся из левой стороны -->
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-columns">
-        <div class="sidebar-column">
-            <h3 style="padding: 15px; border-bottom: 1px solid #444;">Исполнители</h3>
-            <ul>
-                {% for assignee in grouped_tasks.keys() %}
-                <li onclick="showKanbanBoard('assignee', '{{ assignee }}')">{{ assignee }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="sidebar-column">
-            <h3 style="padding: 15px; border-bottom: 1px solid #444;">Системы</h3>
-            <ul>
-                {% for system in grouped_systems.keys() %}
-                <li onclick="showKanbanBoard('system', '{{ system }}')">{{ system }}</li>
-                {% endfor %}
-            </ul>
-        </div>
+      <div class="sidebar-column">
+        <h3>Исполнители</h3>
+        <ul>
+          {% for assignee in grouped_tasks.keys() %}
+          <li onclick="showKanbanBoard('assignee', '{{ assignee }}'); toggleSidebar();">
+            {{ assignee }}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="sidebar-column">
+        <h3>Системы</h3>
+        <ul>
+          {% for system in grouped_systems.keys() %}
+          <li onclick="showKanbanBoard('system', '{{ system }}'); toggleSidebar();">
+            {{ system }}
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
-</div>
-<div class="content" id="content">
+  </div>
+
+  <!-- Основное содержимое: доски для исполнителей и систем -->
+  <div class="content">
     <div id="kanban-areas">
-        {% for assignee, tasks in grouped_tasks.items() %}
-        <div class="area" id="kanban-assignee-{{ assignee }}">
-            <div class="area-header">
-                {{ assignee }}
-                <span>Количество человеко-часов: {{ tasks | sum(attribute='estimation') }}</span>
-            </div>
-            <div class="kanban-board">
-                <div class="column">
-                    <h2>Бэклог</h2>
-                    {% for task in tasks if task.status in ['В очереди', 'Анализ', 'Создано'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="column">
-                    <h2>В работе</h2>
-                    {% for task in tasks if task.status in ['В работе', 'В ожидании'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-                <div class="column">
-                    <h2>Завершенные</h2>
-                    {% for task in tasks if task.status in ['Выполнено', 'Закрыто'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+      {# Доски для исполнителей #}
+      {% for assignee, tasks in grouped_tasks.items() %}
+      <div class="area" id="kanban-assignee-{{ assignee }}">
+        <div class="area-header">
+          <div class="group-title">{{ assignee }}</div>
+          <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
         </div>
-        {% endfor %}
-        {% for system, tasks in grouped_systems.items() %}
-        <div class="area" id="kanban-system-{{ system }}">
-            <div class="area-header">
-                {{ system }}
-                <span>Количество человеко-часов: {{ tasks | sum(attribute='estimation') }}</span>
-            </div>
-            <div class="kanban-board">
-                <div class="column">
-                    <h2>Бэклог</h2>
-                    {% for task in tasks if task.status in ['В очереди', 'Анализ', 'Создано'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
+        <div class="board-container">
+          <div class="kanban-board">
+            {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
+            {% for status in statuses %}
+              {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
+              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                <div class="column-header">
+                  <div class="column-sum">
+                    Сумма: {{ tasks_for_status | sum(attribute='estimation') }}
+                  </div>
+                  <div class="column-title">{{ status }}</div>
                 </div>
-                <div class="column">
-                    <h2>В работе</h2>
-                    {% for task in tasks if task.status in ['В работе', 'В ожидании'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
+                <div class="column-content" ondragover="allowDrop(event)" ondragenter="highlight(event)" ondragleave="unhighlight(event)" ondrop="drop(event)">
+                  {% for task in tasks_for_status %}
+                  <div class="task" draggable="true" data-task-id="{{ task.number }}" ondragstart="drag(event)">
+                    <div><strong>Номер:</strong> {{ task.number }}</div>
+                    <div><strong>Название:</strong> {{ task.name }}</div>
+                    <div><strong>Системы:</strong> {{ task.systems }}</div>
+                    <div><strong>Дата:</strong> {{ task.date }}</div>
+                    <div><strong>Статус:</strong> <span class="task-status">{{ task.status }}</span></div>
+                    <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    <div><strong>Оценка:</strong> {{ task.estimation }}</div>
+                  </div>
+                  {% endfor %}
                 </div>
-                <div class="column">
-                    <h2>Завершенные</h2>
-                    {% for task in tasks if task.status in ['Выполнено', 'Закрыто'] %}
-                    <div class="task">
-                        <div><strong>Номер:</strong> {{ task.number }}</div>
-                        <div><strong>Название:</strong> {{ task.name }}</div>
-                        <div><strong>Системы:</strong> {{ task.systems }}</div>
-                        <div><strong>Дата:</strong> {{ task.date }}</div>
-                        <div><strong>Статус:</strong> {{ task.status }}</div>
-                        <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                        <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
+              </div>
+            {% endfor %}
+          </div>
         </div>
-        {% endfor %}
+      </div>
+      {% endfor %}
+
+      {# Доски для систем #}
+      {% for system, tasks in grouped_systems.items() %}
+      <div class="area" id="kanban-system-{{ system }}">
+        <div class="area-header">
+          <div class="group-title">{{ system }}</div>
+          <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+        </div>
+        <div class="board-container">
+          <div class="kanban-board">
+            {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
+            {% for status in statuses %}
+              {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
+              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                <div class="column-header">
+                  <div class="column-sum">
+                    Сумма: {{ tasks_for_status | sum(attribute='estimation') }}
+                  </div>
+                  <div class="column-title">{{ status }}</div>
+                </div>
+                <div class="column-content" ondragover="allowDrop(event)" ondragenter="highlight(event)" ondragleave="unhighlight(event)" ondrop="drop(event)">
+                  {% for task in tasks_for_status %}
+                  <div class="task" draggable="true" data-task-id="{{ task.number }}" ondragstart="drag(event)">
+                    <div><strong>Номер:</strong> {{ task.number }}</div>
+                    <div><strong>Название:</strong> {{ task.name }}</div>
+                    <div><strong>Системы:</strong> {{ task.systems }}</div>
+                    <div><strong>Дата:</strong> {{ task.date }}</div>
+                    <div><strong>Статус:</strong> <span class="task-status">{{ task.status }}</span></div>
+                    <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+                    <div><strong>Оценка:</strong> {{ task.estimation }}</div>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
-</div>
-<script>
+  </div>
+
+  <script>
     function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const menuButton = document.getElementById('menuButton');
-        if (sidebar.classList.contains('open')) {
-            sidebar.classList.remove('open');
-            menuButton.style.left = '20px';
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function allowDrop(ev) {
+      ev.preventDefault();
+    }
+
+    function drag(ev) {
+      ev.dataTransfer.setData("text/plain", ev.target.getAttribute("data-task-id"));
+      ev.target.classList.add("dragging");
+    }
+
+    document.addEventListener("dragend", function(ev) {
+      ev.target.classList.remove("dragging");
+    });
+
+    function highlight(ev) {
+      ev.currentTarget.classList.add("drop-target");
+    }
+
+    function unhighlight(ev) {
+      ev.currentTarget.classList.remove("drop-target");
+    }
+
+    function drop(ev) {
+      ev.preventDefault();
+      // Убираем выделение целевого контейнера
+      unhighlight(ev);
+
+      var taskId = ev.dataTransfer.getData("text/plain");
+      var column = ev.currentTarget.parentNode;
+      var newStatus = column.getAttribute("data-status");
+
+      var payloadMapping = {
+        "Анализ": {"status": "analysis"},
+        "В очереди": {"estimation": 3600, "status": "onTheQueue"},
+        "В работе": {"status": "inProgress"},
+        "В ожидании": {"status": "waiting"},
+        "Выполнено": {"resolution": "Готово", "status": "done"},
+        "Закрыто": {"status": "closed"}
+      };
+
+      if (!payloadMapping[newStatus]) {
+        alert("Перенос в статус '" + newStatus + "' не разрешён.");
+        return;
+      }
+
+      var url = "https://myserver.ru/api/entities/" + taskId;
+
+      fetch(url, {
+        method: "PATCH",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payloadMapping[newStatus])
+      })
+      .then(response => {
+        if (response.ok) {
+          var taskElem = document.querySelector('[data-task-id="' + taskId + '"]');
+          if (taskElem) {
+            var statusSpan = taskElem.querySelector(".task-status");
+            if (statusSpan) {
+              statusSpan.textContent = newStatus;
+            }
+            ev.currentTarget.appendChild(taskElem);
+          }
         } else {
-            sidebar.classList.add('open');
-            menuButton.style.left = '820px';
+          alert("Ошибка обновления статуса задачи.");
         }
+      })
+      .catch(err => {
+        alert("Ошибка запроса: " + err);
+      });
     }
 
     function showKanbanBoard(type, id) {
-        document.querySelectorAll('.area').forEach(area => {
-            area.classList.remove('active');
-        });
-        document.getElementById(`kanban-${type}-${id}`).classList.add('active');
-        toggleSidebar();
+      document.querySelectorAll('.area').forEach(function(area) {
+        area.classList.remove('active');
+      });
+      var board = document.getElementById('kanban-' + type + '-' + id);
+      if (board) {
+        board.classList.add('active');
+      }
     }
-</script>
+
+    window.showKanbanBoard = showKanbanBoard;
+  </script>
 </body>
 </html>
