@@ -59,6 +59,7 @@ def fetch_tasks():
 
         return redirect(url_for('kanban'))
     except Exception as e:
+        print(f"Ошибка: {str(e)}")
         return render_template('query.html', error=f"Ошибка: {str(e)}", areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
