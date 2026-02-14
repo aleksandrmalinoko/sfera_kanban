@@ -95,6 +95,11 @@
   </div>
 
   <div class="content">
+    <div class="topbar">
+      <button class="theme-btn active" data-theme="glass" onclick="setTheme('glass')">Glass</button>
+      <button class="theme-btn" data-theme="compact" onclick="setTheme('compact')">Compact</button>
+    </div>
+
     <div id="kanban-areas">
       {% for assignee, tasks in grouped_tasks.items() %}
       <div class="area" id="kanban-assignee-{{ assignee }}">
@@ -107,7 +112,7 @@
             {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
             {% for status in statuses %}
               {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
               <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
                 <div class="column-header">
                   <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
@@ -136,7 +141,7 @@
             {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
             {% for status in statuses %}
               {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
               <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
                 <div class="column-header">
                   <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
