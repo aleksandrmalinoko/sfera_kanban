@@ -19,7 +19,16 @@ def group_tasks_by_assignee(tasks):
 def group_tasks_by_system(tasks):
     grouped = {}
     for task in tasks:
-        grouped.setdefault(task['systems'], []).append(task)
+        systems = task.get('systems', ['! Нет Системы'])
+
+        # Приводим к списку, если строка
+        if isinstance(systems, str):
+            systems = [systems]
+
+        for system in systems:
+            grouped.setdefault(system, []).append(task)
+
     for system in grouped:
         grouped[system] = sort_tasks(grouped[system])
+
     return grouped

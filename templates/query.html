@@ -1,63 +1,165 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Введите запрос</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .query-form {
-            background-color: #ffffff;
-            border: 1px solid #ccc;
-            padding: 20px;
-            border-radius: 6px;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .query-form input {
-            padding: 10px;
-            width: 80%;
-            margin-bottom: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .query-form button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .query-form button:hover {
-            background-color: #0056b3;
-        }
-        .error-message {
-            color: red;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Выбор задач</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .query-form {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    .query-form input,
+    .query-form select {
+      width: 300px;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+
+    .query-form label {
+      display: inline-block;
+      margin-right: 20px;
+      font-size: 16px;
+    }
+
+    .query-form button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .query-form button:hover {
+      background-color: #0056b3;
+    }
+
+    .query-form .radio-group {
+      margin-bottom: 20px;
+    }
+
+    #dates-input {
+      display: none;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    #dates-input input {
+      width: 140px;
+    }
+  </style>
 </head>
 <body>
-<div class="query-form">
-    <form action="/fetch-tasks" method="POST">
-        {% if error %}
-        <div class="error-message">{{ error }}</div>
-        {% endif %}
-        <input type="text" name="query" placeholder="Введите запрос для задач" required />
-        <br />
-        <button type="submit">Получить задачи</button>
+  <div class="query-form">
+    <form action="/fetch-tasks" method="POST" onsubmit="return validateForm()">
+      <h2>Выберите способ получения задач</h2>
+
+      <div class="radio-group">
+        <label>
+          <input type="radio" name="mode" value="label" checked onchange="toggleMode()"> По метке
+        </label>
+        <label>
+          <input type="radio" name="mode" value="dates" onchange="toggleMode()"> По диапазону дат
+        </label>
+      </div>
+
+      <div id="label-input">
+        <input list="week-options" name="query_label" id="week-select" type="text" placeholder="23.06-27.06.2025" />
+        <datalist id="week-options"></datalist>
+      </div>
+
+      <div id="dates-input">
+        <input type="date" name="start_date" />
+        <input type="date" name="end_date" />
+      </div>
+
+      <br />
+      <button type="submit">Получить задачи</button>
     </form>
-</div>
+  </div>
+
+  <script>
+    function formatDate(date) {
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit'
+      });
+    }
+
+    function getCurrentMonday(date) {
+      const day = date.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(date);
+      monday.setDate(date.getDate() + diff);
+      return monday;
+    }
+
+    function generateWeeks(count = 10) {
+      const datalist = document.getElementById('week-options');
+      const input = document.getElementById('week-select');
+      const currentMonday = getCurrentMonday(new Date());
+
+      for (let i = -count; i <= count; i++) {
+        const monday = new Date(currentMonday);
+        monday.setDate(monday.getDate() + i * 7);
+
+        const friday = new Date(monday);
+        friday.setDate(friday.getDate() + 4);
+
+        const label = `${formatDate(monday)}-${formatDate(friday)}.${friday.getFullYear()}`;
+        const option = document.createElement('option');
+        option.value = label;
+        datalist.appendChild(option);
+
+        if (i === 0) {
+          input.value = label;
+        }
+      }
+    }
+
+    function toggleMode() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById('label-input').style.display = mode === 'label' ? 'block' : 'none';
+      document.getElementById('dates-input').style.display = mode === 'dates' ? 'flex' : 'none';
+    }
+
+    function validateForm() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      if (mode === 'dates') {
+        const start = document.querySelector('[name="start_date"]').value;
+        const end = document.querySelector('[name="end_date"]').value;
+        if (!start || !end) {
+          alert('Пожалуйста, выберите начальную и конечную дату.');
+          return false;
+        }
+      } else {
+        const label = document.getElementById('week-select').value.trim();
+        if (!label) {
+          alert('Пожалуйста, выберите или введите метку.');
+          return false;
+        }
+      }
+      return true;
+    }
+
+    generateWeeks();
+  </script>
 </body>
 </html>

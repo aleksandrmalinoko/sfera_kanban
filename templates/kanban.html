@@ -162,6 +162,22 @@
       line-height: 50px;
       text-align: center;
     }
+    .description-content {
+      display: none;
+      margin-top: 5px;
+    }
+    .description-toggle {
+        cursor: pointer;
+        color: #007bff;
+        text-decoration: underline;
+        background: none;
+        border: none;
+        padding: 0;
+        font-size: 1em;
+    }
+    .task-highlight {
+      background-color: #d4fdd4; /* светло-салатовый фон для задач с меткой */
+    }
   </style>
 </head>
 <body>
@@ -217,16 +233,43 @@
                   </div>
                   <div class="column-title">{{ status }}</div>
                 </div>
-                <div class="column-content" ondragover="allowDrop(event)" ondragenter="highlight(event)" ondragleave="unhighlight(event)" ondrop="drop(event)">
+                <div class="column-content">
                   {% for task in tasks_for_status %}
-                  <div class="task" draggable="true" data-task-id="{{ task.number }}" ondragstart="drag(event)">
-                    <div><strong>Номер:</strong> {{ task.number }}</div>
+                  {% set highlight = task.label is defined and label_to_match in task.label %}
+                  <div class="task{% if highlight %} task-highlight{% endif %}">
+                    <div>
+                      <strong>Номер:</strong>
+                      <a href="https://tasks.example.local/tasks/area/AREA1/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">
+                        {{ task.number }}
+                      </a>
+                    </div>
                     <div><strong>Название:</strong> {{ task.name }}</div>
-                    <div><strong>Системы:</strong> {{ task.systems }}</div>
+                    {% if task.description | trim and task.description != ' ' %}
+                      <div>
+                        <button class="description-toggle" onclick="toggleDescription('assignee', '{{ task.number }}')">Показать описание</button>
+                        <div id="desc-assignee-{{ task.number }}" class="description-content">
+                          {{ task.description | safe | replace('<p>&nbsp;</p>', '') | replace('&nbsp;', '') | trim }}
+                        </div>
+                      </div>
+                    {% endif %}
+                    <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
                     <div><strong>Дата:</strong> {{ task.date }}</div>
-                    <div><strong>Статус:</strong> <span class="task-status">{{ task.status }}</span></div>
                     <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
                     <div><strong>Оценка:</strong> {{ task.estimation }}</div>
+                    {% if task.relation and task.relation != 'Без связи' %}
+                      {% set valid_relations = task.relation%}
+
+                      {% if valid_relations %}
+                        <div><strong>Связи:</strong>
+                          <ul>
+                            <li>{{ valid_relations.name }}</li>
+                          </ul>
+                        </div>
+                      {% endif %}
+                    {% endif %}
+                    {% if task.label %}
+                      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
+                    {% endif %}
                   </div>
                   {% endfor %}
                 </div>
@@ -241,7 +284,7 @@
       {% for system, tasks in grouped_systems.items() %}
       <div class="area" id="kanban-system-{{ system }}">
         <div class="area-header">
-          <div class="group-title">{{ system }}</div>
+          <div class="group-title">{{ assignee }}</div>
           <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
         </div>
         <div class="board-container">
@@ -257,16 +300,43 @@
                   </div>
                   <div class="column-title">{{ status }}</div>
                 </div>
-                <div class="column-content" ondragover="allowDrop(event)" ondragenter="highlight(event)" ondragleave="unhighlight(event)" ondrop="drop(event)">
+                <div class="column-content">
                   {% for task in tasks_for_status %}
-                  <div class="task" draggable="true" data-task-id="{{ task.number }}" ondragstart="drag(event)">
-                    <div><strong>Номер:</strong> {{ task.number }}</div>
+                  {% set highlight = task.label is defined and label_to_match in task.label %}
+                  <div class="task{% if highlight %} task-highlight{% endif %}">
+                    <div>
+                      <strong>Номер:</strong>
+                      <a href="https://tasks.example.local/tasks/area/AREA1/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">
+                        {{ task.number }}
+                      </a>
+                    </div>
                     <div><strong>Название:</strong> {{ task.name }}</div>
-                    <div><strong>Системы:</strong> {{ task.systems }}</div>
+                    {% if task.description and task.description | replace('&nbsp;', '') | replace('<p></p>', '') | replace('<p>&nbsp;</p>', '') | trim %}
+                      <div>
+                        <button class="description-toggle" onclick="toggleDescription('system', '{{ task.number }}')">Показать описание</button>
+                        <div id="desc-system-{{ task.number }}" class="description-content">
+                          {{ task.description | safe | replace('<p>&nbsp;</p>', '') | replace('&nbsp;', '') | trim }}
+                        </div>
+                      </div>
+                    {% endif %}
+                    <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
                     <div><strong>Дата:</strong> {{ task.date }}</div>
-                    <div><strong>Статус:</strong> <span class="task-status">{{ task.status }}</span></div>
                     <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
                     <div><strong>Оценка:</strong> {{ task.estimation }}</div>
+                    {% if task.relation and task.relation != 'Без связи' %}
+                      {% set valid_relations = task.relation%}
+
+                      {% if valid_relations %}
+                        <div><strong>Связи:</strong>
+                          <ul>
+                            <li>{{ valid_relations.name }}</li>
+                          </ul>
+                        </div>
+                      {% endif %}
+                    {% endif %}
+                    {% if task.label %}
+                      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
+                    {% endif %}
                   </div>
                   {% endfor %}
                 </div>
@@ -274,97 +344,55 @@
             {% endfor %}
           </div>
         </div>
-      </div>
+        </div>
       {% endfor %}
     </div>
   </div>
 
-  <script>
-    function toggleSidebar() {
-      document.getElementById('sidebar').classList.toggle('open');
-    }
-
-    function allowDrop(ev) {
-      ev.preventDefault();
-    }
-
-    function drag(ev) {
-      ev.dataTransfer.setData("text/plain", ev.target.getAttribute("data-task-id"));
-      ev.target.classList.add("dragging");
-    }
-
-    document.addEventListener("dragend", function(ev) {
-      ev.target.classList.remove("dragging");
-    });
-
-    function highlight(ev) {
-      ev.currentTarget.classList.add("drop-target");
-    }
-
-    function unhighlight(ev) {
-      ev.currentTarget.classList.remove("drop-target");
-    }
-
-    function drop(ev) {
-      ev.preventDefault();
-      // Убираем выделение целевого контейнера
-      unhighlight(ev);
-
-      var taskId = ev.dataTransfer.getData("text/plain");
-      var column = ev.currentTarget.parentNode;
-      var newStatus = column.getAttribute("data-status");
-
-      var payloadMapping = {
-        "Анализ": {"status": "analysis"},
-        "В очереди": {"estimation": 3600, "status": "onTheQueue"},
-        "В работе": {"status": "inProgress"},
-        "В ожидании": {"status": "waiting"},
-        "Выполнено": {"resolution": "Готово", "status": "done"},
-        "Закрыто": {"status": "closed"}
-      };
-
-      if (!payloadMapping[newStatus]) {
-        alert("Перенос в статус '" + newStatus + "' не разрешён.");
-        return;
+    <script>
+      function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
       }
 
-      var url = "https://myserver.ru/api/entities/" + taskId;
-
-      fetch(url, {
-        method: "PATCH",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payloadMapping[newStatus])
-      })
-      .then(response => {
-        if (response.ok) {
-          var taskElem = document.querySelector('[data-task-id="' + taskId + '"]');
-          if (taskElem) {
-            var statusSpan = taskElem.querySelector(".task-status");
-            if (statusSpan) {
-              statusSpan.textContent = newStatus;
-            }
-            ev.currentTarget.appendChild(taskElem);
-          }
-        } else {
-          alert("Ошибка обновления статуса задачи.");
+      function showKanbanBoard(type, id) {
+        document.querySelectorAll('.area').forEach(function(area) {
+          area.classList.remove('active');
+        });
+        var board = document.getElementById('kanban-' + type + '-' + id);
+        if (board) {
+          board.classList.add('active');
         }
-      })
-      .catch(err => {
-        alert("Ошибка запроса: " + err);
-      });
-    }
-
-    function showKanbanBoard(type, id) {
-      document.querySelectorAll('.area').forEach(function(area) {
-        area.classList.remove('active');
-      });
-      var board = document.getElementById('kanban-' + type + '-' + id);
-      if (board) {
-        board.classList.add('active');
       }
-    }
 
-    window.showKanbanBoard = showKanbanBoard;
-  </script>
+      function toggleDescription(type, id) {
+        const content = document.getElementById(`desc-${type}-${id}`);
+        if (!content) return;
+
+        const button = content.previousElementSibling;
+        if (content.style.display === 'none' || content.style.display === '') {
+          content.style.display = 'block';
+          if (button) button.textContent = 'Скрыть описание';
+        } else {
+          content.style.display = 'none';
+          if (button) button.textContent = 'Показать описание';
+        }
+      }
+
+      function toggleInvalid(type, id) {
+        const content = document.getElementById(`desc-invalid-${type}-${id}`);
+        if (!content) return;
+
+        const button = content.previousElementSibling;
+        if (content.style.display === 'none' || content.style.display === '') {
+          content.style.display = 'block';
+          if (button) button.textContent = 'Скрыть некорректные связи';
+        } else {
+          content.style.display = 'none';
+          if (button) button.textContent = 'Показать некорректные связи';
+        }
+      }
+
+      window.showKanbanBoard = showKanbanBoard;
+    </script>
 </body>
 </html>
