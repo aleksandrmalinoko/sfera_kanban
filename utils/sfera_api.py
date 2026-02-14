@@ -7,6 +7,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 BASE_URL = "https://tasks.example.local"
+REQUEST_TIMEOUT_SECONDS = 30
 TASK_URL = f"{BASE_URL}/app/tasks/api/v1/entities"
 LOGIN_URL = f"{BASE_URL}/api/auth/login"
 sfera_attributes = ['number', 'name', 'description', 'relations', 'status', 'assignee', 'systems', 'dueDate', 'estimation', 'label', 'parent']
@@ -48,7 +49,7 @@ def get_sfera_token():
         "username": sfera_secrets.sfera_user,
         "password": sfera_secrets.sfera_password
     }
-    response = requests.post(LOGIN_URL, json=get_token_body, headers=get_token_headers, verify=False)
+    response = requests.post(LOGIN_URL, json=get_token_body, headers=get_token_headers, verify=False, timeout=REQUEST_TIMEOUT_SECONDS)
     token = response.json()['access_token']
     return token
 
@@ -59,7 +60,7 @@ def get_pages_count(token, sfera_query):
         "Content-Type": "application/json"
     }
     get_pages_url = f"https://tasks.example.local/app/tasks/api/v1/entity-views?attributes=name&query={sfera_query}"
-    response = requests.get(get_pages_url, headers=get_pages_headers, verify=False, timeout=3600)
+    response = requests.get(get_pages_url, headers=get_pages_headers, verify=False, timeout=REQUEST_TIMEOUT_SECONDS)
     tasks_count = int(response.json()['totalPages'])
     print(f"Фильтр вернул {tasks_count + 1} страниц")
     return tasks_count
@@ -72,7 +73,7 @@ def get_all_tasks(token, page, sfera_query):
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json"
     }
-    response = requests.get(get_all_tasks_url, headers=get_all_tasks_headers, verify=False, timeout=3600)
+    response = requests.get(get_all_tasks_url, headers=get_all_tasks_headers, verify=False, timeout=REQUEST_TIMEOUT_SECONDS)
     all_tasks = response.json()['content']
     print(f"Задачи получены")
     return all_tasks

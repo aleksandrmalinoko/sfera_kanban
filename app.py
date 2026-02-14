@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for
 from utils.sfera_api import generate_tasks_dates, generate_tasks_label
 from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
 from utils.app_config import ASSIGNEE_ORDER, SYSTEM_ORDER, AVAILABLE_AREAS, DEFAULT_AREA
