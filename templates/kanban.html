@@ -5,355 +5,41 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kanban Board</title>
   <style>
-    :root {
-      --bg: #f3f6fc;
-      --surface: #ffffff;
-      --surface-soft: #f8faff;
-      --text: #182230;
-      --muted: #5f6d83;
-      --border: #dce4f3;
-      --shadow: 0 10px 24px rgba(20, 37, 63, 0.08);
-      --accent: #4f7cff;
-      --accent-2: #75a2ff;
-      --highlight: #e8fff0;
-      --sidebar-bg: #0f172a;
-      --sidebar-surface: #19243c;
-      --sidebar-text: #dbe6ff;
-      --page-bg: radial-gradient(circle at 0% 0%, #ffffff 0%, #f3f6fc 45%);
-    }
-
-    body[data-theme="compact"] {
-      --bg: #f4f4f5;
-      --surface: #ffffff;
-      --surface-soft: #f7f7f8;
-      --text: #101828;
-      --muted: #667085;
-      --border: #e4e7ec;
-      --shadow: 0 2px 12px rgba(16, 24, 40, 0.08);
-      --accent: #0f62fe;
-      --accent-2: #3378ff;
-      --highlight: #ebfff2;
-      --sidebar-bg: #111827;
-      --sidebar-surface: #1f2937;
-      --sidebar-text: #e5e7eb;
-      --page-bg: linear-gradient(180deg, #fbfbfc 0%, #f4f4f5 100%);
-    }
-
-    body[data-theme="dark"] {
-      --bg: #0b1220;
-      --surface: #121c30;
-      --surface-soft: #0f172a;
-      --text: #dbe6ff;
-      --muted: #8ea1c4;
-      --border: #2a3a58;
-      --shadow: 0 12px 24px rgba(2, 8, 23, 0.45);
-      --accent: #60a5fa;
-      --accent-2: #818cf8;
-      --highlight: #163824;
-      --sidebar-bg: #060b16;
-      --sidebar-surface: #0f172a;
-      --sidebar-text: #dbeafe;
-      --page-bg: radial-gradient(circle at 0% 0%, #0f172a 0%, #030712 65%);
-    }
-
-    body[data-theme="sunset"] {
-      --bg: #fff6ee;
-      --surface: #ffffff;
-      --surface-soft: #fff3e7;
-      --text: #4a2518;
-      --muted: #875a4f;
-      --border: #f2d3c2;
-      --shadow: 0 10px 24px rgba(122, 63, 35, 0.12);
-      --accent: #ff7a59;
-      --accent-2: #ffb347;
-      --highlight: #fff2cf;
-      --sidebar-bg: #4a1f1b;
-      --sidebar-surface: #6b2f29;
-      --sidebar-text: #ffe8dc;
-      --page-bg: linear-gradient(180deg, #fff8f2 0%, #ffeede 100%);
-    }
-
-    body[data-theme="forest"] {
-      --bg: #edf7f1;
-      --surface: #ffffff;
-      --surface-soft: #f2fbf5;
-      --text: #163227;
-      --muted: #4f7265;
-      --border: #cde6d7;
-      --shadow: 0 10px 24px rgba(24, 74, 51, 0.12);
-      --accent: #1f8f63;
-      --accent-2: #53b57d;
-      --highlight: #e2ffe8;
-      --sidebar-bg: #103428;
-      --sidebar-surface: #184635;
-      --sidebar-text: #dff8ea;
-      --page-bg: radial-gradient(circle at 0% 0%, #f7fffa 0%, #eaf6ef 60%);
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: Inter, Segoe UI, Arial, sans-serif;
-      background: var(--page-bg);
-      color: var(--text);
-    }
-
-    .content {
-      margin: 20px 20px 20px 84px;
-    }
-
-    .topbar {
-      position: sticky;
-      top: 10px;
-      z-index: 900;
-      margin-bottom: 12px;
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-
-    .theme-btn {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      padding: 8px 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 600;
-      box-shadow: var(--shadow);
-    }
-
-    .theme-btn.active {
-      border-color: var(--accent);
-      color: var(--accent);
-    }
-
-    .area {
-      display: none;
-    }
-
-    .area.active {
-      display: block;
-      min-height: calc(100vh - 40px);
-    }
-
-    .area-header {
-      background: linear-gradient(130deg, var(--accent), var(--accent-2));
-      color: #fff;
-      padding: 12px 16px;
-      font-size: 16px;
-      border-radius: 14px 14px 0 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      box-shadow: var(--shadow);
-    }
-
-    .group-title { font-weight: 700; }
-
-    .group-total {
-      font-size: 13px;
-      opacity: 0.95;
-      font-weight: 600;
-    }
-
-    .board-container {
-      overflow-x: auto;
-      overflow-y: hidden;
-      padding: 12px 4px 4px;
-      max-height: calc(100vh - 132px);
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 14px 14px;
-      background: var(--surface-soft);
-    }
-
-    .kanban-board {
-      display: flex;
-      gap: 12px;
-      padding-bottom: 12px;
-      min-height: 100%;
-    }
-
-    .column {
-      display: flex;
-      flex-direction: column;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      overflow: hidden;
-    }
-
-    .column-header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      padding: 10px 12px;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .column-sum {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 4px;
-    }
-
-    .column-title {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .column-content {
-      overflow-y: auto;
-      padding: 10px;
-      max-height: calc(100vh - 220px);
-    }
-
-    .task {
-      background: var(--surface);
-      margin-bottom: 10px;
-      padding: 10px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      word-wrap: break-word;
-      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .task:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.1);
-    }
-
-    .task p,
-    .task ul {
-      margin: 6px 0;
-      padding-left: 16px;
-      color: var(--text);
-      font-size: 13px;
-    }
-
-    .task > div {
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: var(--text);
-    }
-
-    .task a {
-      color: var(--accent);
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .task a:hover { text-decoration: underline; }
-
-    .task-highlight {
-      background-color: var(--highlight);
-      border-color: #a6efc2;
-    }
-
-    .description-content {
-      display: none;
-      margin-top: 8px;
-      padding: 8px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: var(--surface-soft);
-    }
-
-    .description-toggle {
-      cursor: pointer;
-      color: var(--accent);
-      background: none;
-      border: none;
-      padding: 0;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .menu-button {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      width: 52px;
-      height: 52px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      z-index: 1002;
-      cursor: pointer;
-      font-size: 22px;
-      box-shadow: var(--shadow);
-    }
-
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: min(760px, 92vw);
-      height: 100vh;
-      background: var(--sidebar-bg);
-      color: var(--sidebar-text);
-      overflow-y: auto;
-      z-index: 1001;
-      padding: 14px;
-      transform: translateX(-102%);
-      transition: transform 0.25s ease;
-    }
-
+    body { margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f0f0f5; }
+    .content { margin: 20px 20px 20px 80px; box-sizing: border-box; }
+    .area { display: none; margin-bottom: 0; }
+    .area.active { display: block; min-height: 100vh; }
+    .area-header { background-color: #5a9bd5; color: white; padding: 10px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
+    .board-container { overflow-x: auto; padding-bottom: 0; height: calc(100vh - 50px); box-sizing: border-box; }
+    .kanban-board { display: flex; gap: 10px; padding-right: 20px; box-sizing: border-box; }
+    .column { display: flex; flex-direction: column; border: 1px solid #ddd; background-color: #f5f5f5; box-sizing: border-box; }
+    .column-header { padding: 10px; background-color: #eee; box-sizing: border-box; }
+    .column-header .column-sum { font-weight: bold; margin-bottom: 5px; }
+    .column-header .column-title { font-size: 16px; font-weight: bold; }
+    .column-content { overflow-y: auto; padding: 10px; max-height: calc(100vh - 50px - 70px); box-sizing: border-box; }
+    .task { background-color: #e9edf5; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 6px; max-width: 580px; word-wrap: break-word; box-sizing: border-box; }
+    .sidebar { position: fixed; top: 0; left: 0; width: 700px; height: 100vh; background-color: #333; color: white; overflow-y: auto; z-index: 1001; padding: 10px; box-sizing: border-box; transform: translateX(-100%); transition: transform 0.3s ease; }
     .sidebar.open { transform: translateX(0); }
-
-    .sidebar-columns {
-      display: flex;
-      gap: 10px;
-    }
-
-    .sidebar-column {
-      flex: 1;
-      background: var(--sidebar-surface);
-      border-radius: 10px;
-      padding: 6px;
-    }
-
-    .sidebar-column h3 {
-      margin: 4px 0 6px;
-      padding: 8px;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    }
-
-    .sidebar-column ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .sidebar-column ul li {
-      padding: 8px;
-      border-radius: 8px;
-      cursor: pointer;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-size: 13px;
-    }
-
-    .sidebar-column ul li:hover {
-      background: rgba(255, 255, 255, 0.14);
-    }
+    .sidebar-columns { display: flex; gap: 10px; box-sizing: border-box; }
+    .sidebar-column { flex: 1; }
+    .sidebar-column h3 { margin: 10px 0 5px 0; padding: 5px; border-bottom: 1px solid #444; }
+    .sidebar-column ul { list-style: none; padding: 0; margin: 0; }
+    .sidebar-column ul li { padding: 8px; border-bottom: 1px solid #444; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-column ul li:hover { background-color: #555; }
+    .menu-button { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; background-color: #007bff; color: white; border: none; border-radius: 50%; z-index: 1002; cursor: pointer; font-size: 24px; line-height: 50px; text-align: center; }
+    .description-content { display: none; margin-top: 5px; }
+    .description-toggle { cursor: pointer; color: #007bff; text-decoration: underline; background: none; border: none; padding: 0; font-size: 1em; }
+    .task-highlight { background-color: #d4fdd4; }
   </style>
 </head>
-<body data-theme="glass">
+<body>
   {% macro task_card(task, board_type) -%}
   {% set highlight = task.label is defined and label_to_match in task.label %}
   <div class="task{% if highlight %} task-highlight{% endif %}">
-    <div><strong>Номер:</strong> <a href="https://sfera.inno.local/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a></div>
+    <div>
+      <strong>Номер:</strong>
+      <a href="https://sfera.inno.local/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a>
+    </div>
     <div><strong>Название:</strong> {{ task.name }}</div>
     {% if task.description | trim and task.description != ' ' %}
       <div>
@@ -410,11 +96,8 @@
 
   <div class="content">
     <div class="topbar">
-      <button class="theme-btn" data-theme="glass">Glass</button>
-      <button class="theme-btn" data-theme="compact">Compact</button>
-      <button class="theme-btn" data-theme="dark">Dark</button>
-      <button class="theme-btn" data-theme="sunset">Sunset</button>
-      <button class="theme-btn" data-theme="forest">Forest</button>
+      <button class="theme-btn active" data-theme="glass" onclick="setTheme('glass')">Glass</button>
+      <button class="theme-btn" data-theme="compact" onclick="setTheme('compact')">Compact</button>
     </div>
 
     <div id="kanban-areas">
@@ -506,44 +189,6 @@
         if (button) button.textContent = 'Показать описание';
       }
     }
-
-    const availableThemes = ['glass', 'compact', 'dark', 'sunset', 'forest'];
-
-    function setTheme(theme) {
-      const validTheme = availableThemes.includes(theme) ? theme : 'glass';
-      document.body.setAttribute('data-theme', validTheme);
-      document.querySelectorAll('.theme-btn').forEach((btn) => {
-        btn.classList.toggle('active', btn.dataset.theme === validTheme);
-      });
-      try {
-        localStorage.setItem('kanbanTheme', validTheme);
-      } catch (_) {
-        // ignore storage limitations
-      }
-    }
-
-    function getSavedTheme() {
-      try {
-        return localStorage.getItem('kanbanTheme');
-      } catch (_) {
-        return null;
-      }
-    }
-
-    function initView() {
-      document.querySelectorAll('.theme-btn').forEach((btn) => {
-        btn.addEventListener('click', () => setTheme(btn.dataset.theme));
-      });
-
-      setTheme(getSavedTheme() || 'glass');
-
-      const firstAssigneeArea = document.querySelector('[id^="kanban-assignee-"]');
-      if (firstAssigneeArea) {
-        firstAssigneeArea.classList.add('active');
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', initView);
 
     window.showKanbanBoard = showKanbanBoard;
   </script>
