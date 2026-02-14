@@ -219,31 +219,35 @@
       <button class="theme-btn" data-theme="contrast" onclick="setTheme('contrast')">Contrast</button>
     </div>
 
-    <div id="kanban-areas">
+    <div id="kanban-areas" style="flex: 1; min-height: 0;">
       {% for assignee, tasks in grouped_tasks.items() %}
       <div class="area" id="kanban-assignee-{{ assignee }}">
-        <div class="area-header">
-          <div class="group-title">{{ assignee }}</div>
-          <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
-        </div>
-        <div class="board-container">
-          <div class="kanban-board">
-            {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
-            {% for status in statuses %}
-              {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
-              <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
-                <div class="column-header">
-                  <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
-                  <div class="column-title">{{ status }}</div>
-                </div>
-                <div class="column-content">
-                  {% for task in tasks_for_status %}
-                    {{ task_card(task, 'assignee') }}
-                  {% endfor %}
-                </div>
+        <div class="area-scroll">
+          <div class="area-inner">
+            <div class="area-header">
+              <div class="group-title">{{ assignee }}</div>
+              <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+            </div>
+            <div class="board-container">
+              <div class="kanban-board">
+                {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
+                {% for status in statuses %}
+                  {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
+                  {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
+                  <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                    <div class="column-header">
+                      <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
+                      <div class="column-title">{{ status }}</div>
+                    </div>
+                    <div class="column-content">
+                      {% for task in tasks_for_status %}
+                        {{ task_card(task, 'assignee') }}
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
               </div>
-            {% endfor %}
+            </div>
           </div>
         </div>
       </div>
@@ -251,28 +255,32 @@
 
       {% for system, tasks in grouped_systems.items() %}
       <div class="area" id="kanban-system-{{ system }}">
-        <div class="area-header">
-          <div class="group-title">{{ system }}</div>
-          <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
-        </div>
-        <div class="board-container">
-          <div class="kanban-board">
-            {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
-            {% for status in statuses %}
-              {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
-              <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
-                <div class="column-header">
-                  <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
-                  <div class="column-title">{{ status }}</div>
-                </div>
-                <div class="column-content">
-                  {% for task in tasks_for_status %}
-                    {{ task_card(task, 'system') }}
-                  {% endfor %}
-                </div>
+        <div class="area-scroll">
+          <div class="area-inner">
+            <div class="area-header">
+              <div class="group-title">{{ system }}</div>
+              <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+            </div>
+            <div class="board-container">
+              <div class="kanban-board">
+                {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
+                {% for status in statuses %}
+                  {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
+                  {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
+                  <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                    <div class="column-header">
+                      <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
+                      <div class="column-title">{{ status }}</div>
+                    </div>
+                    <div class="column-content">
+                      {% for task in tasks_for_status %}
+                        {{ task_card(task, 'system') }}
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
               </div>
-            {% endfor %}
+            </div>
           </div>
         </div>
       </div>
