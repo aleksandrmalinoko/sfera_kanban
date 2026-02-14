@@ -12,6 +12,7 @@ app = Flask(__name__)
 tasks = []
 label_to_match = None
 selected_area = DEFAULT_AREA
+last_fetch_params = None
 
 fetch_jobs = {}
 fetch_jobs_lock = Lock()
@@ -66,7 +67,7 @@ def append_job_log(job_id, message):
 
 
 def run_fetch_job(job_id):
-    global tasks, label_to_match
+    global tasks, label_to_match, last_fetch_params
 
     with fetch_jobs_lock:
         job = fetch_jobs.get(job_id)
@@ -98,6 +99,13 @@ def run_fetch_job(job_id):
 
         tasks = loaded_tasks
         label_to_match = current_label
+        last_fetch_params = {
+            'mode': mode,
+            'area': area,
+            'label': label,
+            'start_date': start_date,
+            'end_date': end_date,
+        }
 
         with fetch_jobs_lock:
             fetch_jobs[job_id]['status'] = 'done'
@@ -161,7 +169,7 @@ def fetch_status(job_id):
 
 @app.route('/fetch-tasks', methods=['POST'])
 def fetch_tasks():
-    global tasks, label_to_match, selected_area
+    global tasks, label_to_match, selected_area, last_fetch_params
 
     mode = request.form.get('mode')
     requested_area = request.form.get('area', DEFAULT_AREA)
@@ -179,10 +187,24 @@ def fetch_tasks():
             label = generate_label(start_date, end_date)
             tasks = generate_tasks_dates(start_date, end_date, label, selected_area, progress_callback=progress_callback)
             label_to_match = label
+            last_fetch_params = {
+                'mode': mode,
+                'area': selected_area,
+                'label': None,
+                'start_date': start_date,
+                'end_date': end_date,
+            }
         else:
             label = request.form.get('query_label')
             tasks = generate_tasks_label(label, selected_area, progress_callback=progress_callback)
             label_to_match = label
+            last_fetch_params = {
+                'mode': mode,
+                'area': selected_area,
+                'label': label,
+                'start_date': None,
+                'end_date': None,
+            }
 
         return redirect(url_for('kanban'))
     except Exception as exc:
@@ -193,6 +215,34 @@ def fetch_tasks():
             selected_area=selected_area,
             progress_logs=collected_logs,
         )
+
+
+@app.route('/refresh-tasks', methods=['POST'])
+def refresh_tasks():
+    global tasks, label_to_match, selected_area, last_fetch_params
+
+    if not last_fetch_params:
+        return jsonify({'ok': False, 'error': 'Нет параметров последнего запроса для обновления'}), 400
+
+    mode = last_fetch_params.get('mode')
+    area = last_fetch_params.get('area', DEFAULT_AREA)
+    selected_area = area if area in AVAILABLE_AREAS else DEFAULT_AREA
+
+    try:
+        if mode == 'dates':
+            start_date = last_fetch_params.get('start_date')
+            end_date = last_fetch_params.get('end_date')
+            label = generate_label(start_date, end_date)
+            tasks = generate_tasks_dates(start_date, end_date, label, selected_area)
+            label_to_match = label
+        else:
+            label = last_fetch_params.get('label')
+            tasks = generate_tasks_label(label, selected_area)
+            label_to_match = label
+
+        return jsonify({'ok': True})
+    except Exception as exc:
+        return jsonify({'ok': False, 'error': f'Ошибка обновления задач: {exc}'}), 500
 
 
 @app.route('/kanban')
