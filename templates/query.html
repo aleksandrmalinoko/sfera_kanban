@@ -24,7 +24,8 @@
       width: 420px;
     }
 
-    .query-form input,
+    .query-form input[type="text"],
+    .query-form input[type="date"],
     .query-form select {
       width: 300px;
       padding: 10px;
@@ -33,9 +34,21 @@
     }
 
     .query-form label {
-      display: inline-block;
-      margin-right: 20px;
       font-size: 16px;
+    }
+
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .radio-group input[type="radio"] {
+      margin: 0;
+      width: auto;
+      accent-color: #007bff;
     }
 
     .query-form button {
@@ -58,7 +71,11 @@
     }
 
     .query-form .radio-group {
-      margin-bottom: 20px;
+      margin: 0 auto 20px;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
     }
 
     #dates-input {
