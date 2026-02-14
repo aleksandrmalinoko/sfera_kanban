@@ -315,6 +315,30 @@
       var board = document.getElementById('kanban-' + type + '-' + id);
       if (board) {
         board.classList.add('active');
+        localStorage.setItem('kanbanActiveBoard', JSON.stringify({ type, id }));
+      }
+    }
+
+    function restoreActiveBoard() {
+      const savedBoard = localStorage.getItem('kanbanActiveBoard');
+      if (savedBoard) {
+        try {
+          const parsedBoard = JSON.parse(savedBoard);
+          if (parsedBoard && parsedBoard.type && parsedBoard.id) {
+            const savedBoardElement = document.getElementById(`kanban-${parsedBoard.type}-${parsedBoard.id}`);
+            if (savedBoardElement) {
+              showKanbanBoard(parsedBoard.type, parsedBoard.id);
+              return;
+            }
+          }
+        } catch (error) {
+          localStorage.removeItem('kanbanActiveBoard');
+        }
+      }
+
+      const firstArea = document.querySelector('.area');
+      if (firstArea) {
+        firstArea.classList.add('active');
       }
     }
 
@@ -369,11 +393,13 @@
       const savedTheme = localStorage.getItem('kanbanTheme');
       const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : 'glass';
       setTheme(initialTheme);
+      restoreActiveBoard();
     });
 
     window.showKanbanBoard = showKanbanBoard;
     window.setTheme = setTheme;
     window.refreshTasks = refreshTasks;
+    window.restoreActiveBoard = restoreActiveBoard;
   </script>
 </body>
 </html>
