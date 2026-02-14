@@ -1,54 +1,24 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify
 from utils.sfera_api import generate_tasks_dates, generate_tasks_label
 from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
+from utils.app_config import ASSIGNEE_ORDER, SYSTEM_ORDER, AVAILABLE_AREAS, DEFAULT_AREA
 
 app = Flask(__name__)
 tasks = []
 label_to_match = None
+selected_area = DEFAULT_AREA
+
+
+def sort_by_order(grouped_items, order):
+    ordered_keys = sorted(grouped_items.keys(), key=lambda x: (order.index(x) if x in order else len(order)))
+    return {key: grouped_items[key] for key in ordered_keys}
 
 def sort_assignees(grouped_tasks):
-    order = [
-        "Иванов Иван Иванович",
-        "Петров Пётр Петрович",
-        "Сидоров Сидор Сидорович",
-        "Кузнецов Кузьма Кузьмич",
-        "Смирнов Семён Семёнович",
-        "Попов Павел Павлович",
-        "Васильев Василий Васильевич",
-        "Фёдоров Фёдор Фёдорович",
-        "Николаев Николай Николаевич",
-        "Андреев Андрей Андреевич",
-        "Михайлов Михаил Михайлович",
-        "Алексеев Алексей Алексеевич",
-        "Борисов Борис Борисович",
-        "Соколов Сергей Сергеевич",
-        "Морозов Матвей Матвеевич",
-        "Волкова Вера Викторовна",
-        "Без исполнителя",
-        "Тихонов Тимофей Тимофеевич",
-        "Зайцев Захар Захарович"
-    ]
-    ordered_keys = sorted(grouped_tasks.keys(), key=lambda x: (order.index(x) if x in order else len(order)))
-    return {key: grouped_tasks[key] for key in ordered_keys}
+    return sort_by_order(grouped_tasks, ASSIGNEE_ORDER)
 
 
 def sort_systems(grouped_systems):
-    order = [
-        "Модуль A",
-        "Модуль B",
-        "Модуль C",
-        "Модуль D",
-        "Модуль E",
-        "Модуль F",
-        "Модуль G",
-        "Модуль H",
-        "Модуль I",
-        "Модуль J",
-        "Без системы",
-        "! Нет Системы"
-    ]
-    ordered_keys = sorted(grouped_systems.keys(), key=lambda x: (order.index(x) if x in order else len(order)))
-    return {key: grouped_systems[key] for key in ordered_keys}
+    return sort_by_order(grouped_systems, SYSTEM_ORDER)
 
 
 def generate_label(start, end):
@@ -64,13 +34,15 @@ def query_page():
     """
     Стартовая страница с полем для ввода запроса.
     """
-    return render_template('query.html')
+    return render_template('query.html', areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
 @app.route('/fetch-tasks', methods=['POST'])
 def fetch_tasks():
-    global tasks, label_to_match
+    global tasks, label_to_match, selected_area
     mode = request.form.get('mode')
+    requested_area = request.form.get('area', DEFAULT_AREA)
+    selected_area = requested_area if requested_area in AVAILABLE_AREAS else DEFAULT_AREA
 
     try:
         if mode == 'dates':
@@ -78,16 +50,16 @@ def fetch_tasks():
             end_date = request.form.get('end_date')
             # Можно сформировать метку, либо сделать это внутри функции
             label = generate_label(start_date, end_date)
-            tasks = generate_tasks_dates(start_date, end_date, label)
+            tasks = generate_tasks_dates(start_date, end_date, label, selected_area)
             label_to_match = label
         else:
             label = request.form.get('query_label')
-            tasks = generate_tasks_label(label)
+            tasks = generate_tasks_label(label, selected_area)
             label_to_match = label
 
         return redirect(url_for('kanban'))
     except Exception as e:
-        return render_template('query.html', error=f"Ошибка: {str(e)}")
+        return render_template('query.html', error=f"Ошибка: {str(e)}", areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
 @app.route('/kanban')
