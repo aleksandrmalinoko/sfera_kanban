@@ -230,12 +230,13 @@
       <div class="area" id="kanban-assignee-{{ assignee }}">
         <div class="area-scroll">
           <div class="area-inner">
-            <div class="area-header">
-              <div class="group-title">{{ assignee }}</div>
-              <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
-            </div>
             <div class="board-container">
-              <div class="kanban-board">
+              <div class="board-content">
+                <div class="area-header">
+                  <div class="group-title">{{ assignee }}</div>
+                  <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+                </div>
+                <div class="kanban-board">
                 {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
                 {% for status in statuses %}
                   {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
@@ -253,6 +254,7 @@
                   </div>
                 {% endfor %}
               </div>
+              </div>
             </div>
           </div>
         </div>
@@ -263,12 +265,13 @@
       <div class="area" id="kanban-system-{{ system }}">
         <div class="area-scroll">
           <div class="area-inner">
-            <div class="area-header">
-              <div class="group-title">{{ system }}</div>
-              <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
-            </div>
             <div class="board-container">
-              <div class="kanban-board">
+              <div class="board-content">
+                <div class="area-header">
+                  <div class="group-title">{{ system }}</div>
+                  <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+                </div>
+                <div class="kanban-board">
                 {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
                 {% for status in statuses %}
                   {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
@@ -285,6 +288,7 @@
                     </div>
                   </div>
                 {% endfor %}
+              </div>
               </div>
             </div>
           </div>
