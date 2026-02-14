@@ -125,6 +125,9 @@
     #kanban-areas { flex: 1; min-height: 0; display: flex; overflow: hidden; }
     .theme-btn { border: 1px solid var(--theme-btn-border); background: var(--theme-btn-bg); color: var(--theme-btn-text); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 14px; transition: all 0.2s ease; }
     .theme-btn.active { background: var(--theme-btn-active-bg); color: var(--theme-btn-active-text); border-color: var(--theme-btn-active-bg); }
+    .refresh-btn { border: 1px solid var(--theme-btn-border); background: var(--theme-btn-bg); color: var(--theme-btn-text); border-radius: 999px; padding: 6px 14px; cursor: pointer; font-size: 14px; transition: all 0.2s ease; }
+    .refresh-btn:hover { background: var(--theme-btn-active-bg); color: var(--theme-btn-active-text); border-color: var(--theme-btn-active-bg); }
+    .refresh-btn:disabled { cursor: wait; opacity: 0.75; }
     .area { display: none; margin-bottom: 0; height: 100%; min-height: 0; min-width: 0; }
     .area.active { display: flex; flex-direction: column; flex: 1; }
     .area-scroll, .area-inner { display: flex; flex-direction: column; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
@@ -224,6 +227,7 @@
       <button class="theme-btn" data-theme="compact" onclick="setTheme('compact')">Compact</button>
       <button class="theme-btn" data-theme="night" onclick="setTheme('night')">Night</button>
       <button class="theme-btn" data-theme="contrast" onclick="setTheme('contrast')">Contrast</button>
+      <button id="refresh-btn" class="refresh-btn" onclick="refreshTasks()">Обновить</button>
     </div>
 
     <div id="kanban-areas">
@@ -311,6 +315,30 @@
       var board = document.getElementById('kanban-' + type + '-' + id);
       if (board) {
         board.classList.add('active');
+        localStorage.setItem('kanbanActiveBoard', JSON.stringify({ type, id }));
+      }
+    }
+
+    function restoreActiveBoard() {
+      const savedBoard = localStorage.getItem('kanbanActiveBoard');
+      if (savedBoard) {
+        try {
+          const parsedBoard = JSON.parse(savedBoard);
+          if (parsedBoard && parsedBoard.type && parsedBoard.id) {
+            const savedBoardElement = document.getElementById(`kanban-${parsedBoard.type}-${parsedBoard.id}`);
+            if (savedBoardElement) {
+              showKanbanBoard(parsedBoard.type, parsedBoard.id);
+              return;
+            }
+          }
+        } catch (error) {
+          localStorage.removeItem('kanbanActiveBoard');
+        }
+      }
+
+      const firstArea = document.querySelector('.area');
+      if (firstArea) {
+        firstArea.classList.add('active');
       }
     }
 
@@ -336,15 +364,42 @@
       });
     }
 
+    async function refreshTasks() {
+      const refreshButton = document.getElementById('refresh-btn');
+      if (!refreshButton) return;
+
+      const originalText = refreshButton.textContent;
+      refreshButton.disabled = true;
+      refreshButton.textContent = 'Обновляем...';
+
+      try {
+        const response = await fetch('/refresh-tasks', { method: 'POST' });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Не удалось обновить задачи');
+        }
+
+        window.location.reload();
+      } catch (error) {
+        alert(`Ошибка: ${error.message || error}`);
+        refreshButton.disabled = false;
+        refreshButton.textContent = originalText;
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
       const availableThemes = ['glass', 'compact', 'night', 'contrast'];
       const savedTheme = localStorage.getItem('kanbanTheme');
       const initialTheme = availableThemes.includes(savedTheme) ? savedTheme : 'glass';
       setTheme(initialTheme);
+      restoreActiveBoard();
     });
 
     window.showKanbanBoard = showKanbanBoard;
     window.setTheme = setTheme;
+    window.refreshTasks = refreshTasks;
+    window.restoreActiveBoard = restoreActiveBoard;
   </script>
 </body>
 </html>
