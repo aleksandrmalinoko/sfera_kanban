@@ -80,10 +80,6 @@
 <body>
   <div class="query-form">
     <form action="/fetch-tasks" method="POST" onsubmit="return validateForm()">
-
-    {% if error %}
-      <div class="error-box">{{ error }}</div>
-    {% endif %}
       <select name="area" id="area-select">
         {% for area in areas %}
           <option value="{{ area }}" {% if area == selected_area %}selected{% endif %}>{{ area }}</option>
