@@ -5,195 +5,430 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kanban Board</title>
   <style>
-    /* Общие стили */
+    :root {
+      --bg: #f3f6fc;
+      --surface: #ffffff;
+      --surface-soft: #f8faff;
+      --text: #182230;
+      --muted: #5f6d83;
+      --border: #dce4f3;
+      --shadow: 0 10px 24px rgba(20, 37, 63, 0.08);
+      --accent: #4f7cff;
+      --accent-2: #75a2ff;
+      --highlight: #e8fff0;
+      --sidebar-bg: #0f172a;
+      --sidebar-surface: #19243c;
+      --sidebar-text: #dbe6ff;
+      --page-bg: radial-gradient(circle at 0% 0%, #ffffff 0%, #f3f6fc 45%);
+    }
+
+    body[data-theme="compact"] {
+      --bg: #f4f4f5;
+      --surface: #ffffff;
+      --surface-soft: #f7f7f8;
+      --text: #101828;
+      --muted: #667085;
+      --border: #e4e7ec;
+      --shadow: 0 2px 12px rgba(16, 24, 40, 0.08);
+      --accent: #0f62fe;
+      --accent-2: #3378ff;
+      --highlight: #ebfff2;
+      --sidebar-bg: #111827;
+      --sidebar-surface: #1f2937;
+      --sidebar-text: #e5e7eb;
+      --page-bg: linear-gradient(180deg, #fbfbfc 0%, #f4f4f5 100%);
+    }
+
+    body[data-theme="dark"] {
+      --bg: #0b1220;
+      --surface: #121c30;
+      --surface-soft: #0f172a;
+      --text: #dbe6ff;
+      --muted: #8ea1c4;
+      --border: #2a3a58;
+      --shadow: 0 12px 24px rgba(2, 8, 23, 0.45);
+      --accent: #60a5fa;
+      --accent-2: #818cf8;
+      --highlight: #163824;
+      --sidebar-bg: #060b16;
+      --sidebar-surface: #0f172a;
+      --sidebar-text: #dbeafe;
+      --page-bg: radial-gradient(circle at 0% 0%, #0f172a 0%, #030712 65%);
+    }
+
+    body[data-theme="sunset"] {
+      --bg: #fff6ee;
+      --surface: #ffffff;
+      --surface-soft: #fff3e7;
+      --text: #4a2518;
+      --muted: #875a4f;
+      --border: #f2d3c2;
+      --shadow: 0 10px 24px rgba(122, 63, 35, 0.12);
+      --accent: #ff7a59;
+      --accent-2: #ffb347;
+      --highlight: #fff2cf;
+      --sidebar-bg: #4a1f1b;
+      --sidebar-surface: #6b2f29;
+      --sidebar-text: #ffe8dc;
+      --page-bg: linear-gradient(180deg, #fff8f2 0%, #ffeede 100%);
+    }
+
+    body[data-theme="forest"] {
+      --bg: #edf7f1;
+      --surface: #ffffff;
+      --surface-soft: #f2fbf5;
+      --text: #163227;
+      --muted: #4f7265;
+      --border: #cde6d7;
+      --shadow: 0 10px 24px rgba(24, 74, 51, 0.12);
+      --accent: #1f8f63;
+      --accent-2: #53b57d;
+      --highlight: #e2ffe8;
+      --sidebar-bg: #103428;
+      --sidebar-surface: #184635;
+      --sidebar-text: #dff8ea;
+      --page-bg: radial-gradient(circle at 0% 0%, #f7fffa 0%, #eaf6ef 60%);
+    }
+
+
+    body[data-theme="ocean"] {
+      --bg: #eef8ff;
+      --surface: #ffffff;
+      --surface-soft: #f1f9ff;
+      --text: #0f2f46;
+      --muted: #4f7894;
+      --border: #cde4f5;
+      --shadow: 0 10px 24px rgba(18, 74, 116, 0.12);
+      --accent: #2f80ed;
+      --accent-2: #56ccf2;
+      --highlight: #ddf4ff;
+      --sidebar-bg: #0b2e4a;
+      --sidebar-surface: #13466d;
+      --sidebar-text: #e2f4ff;
+      --page-bg: linear-gradient(180deg, #f8fcff 0%, #e7f5ff 100%);
+    }
+
+    body[data-theme="mono"] {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --surface-soft: #fafafa;
+      --text: #1f1f1f;
+      --muted: #6b6b6b;
+      --border: #dddddd;
+      --shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      --accent: #333333;
+      --accent-2: #666666;
+      --highlight: #f0f0f0;
+      --sidebar-bg: #1a1a1a;
+      --sidebar-surface: #2a2a2a;
+      --sidebar-text: #efefef;
+      --page-bg: linear-gradient(180deg, #fbfbfb 0%, #f1f1f1 100%);
+    }
+
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      padding: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f0f0f5;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: var(--page-bg);
+      color: var(--text);
     }
-    /* Основное содержимое: отступ слева, чтобы не пересекалось с кнопкой меню */
+
     .content {
-      margin: 20px 20px 20px 80px; /* отступ слева 80px */
-      box-sizing: border-box;
+      margin: 20px 20px 20px 84px;
     }
-    /* Области доски */
+
+    .topbar {
+      position: sticky;
+      top: 10px;
+      z-index: 900;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .theme-btn {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow);
+    }
+
+    .theme-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
     .area {
       display: none;
-      margin-bottom: 0;
     }
+
     .area.active {
       display: block;
-      min-height: 100vh;
+      min-height: calc(100vh - 40px);
     }
+
     .area-header {
-      background-color: #5a9bd5;
-      color: white;
-      padding: 10px;
-      font-size: 18px;
+      background: linear-gradient(130deg, var(--accent), var(--accent-2));
+      color: #fff;
+      padding: 12px 16px;
+      font-size: 16px;
+      border-radius: 14px 14px 0 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-sizing: border-box;
+      box-shadow: var(--shadow);
     }
-    /* Контейнер доски с горизонтальной прокруткой */
+
+    .group-title { font-weight: 700; }
+
+    .group-total {
+      font-size: 13px;
+      opacity: 0.95;
+      font-weight: 600;
+    }
+
     .board-container {
       overflow-x: auto;
-      padding-bottom: 0;
-      height: calc(100vh - 50px);
-      box-sizing: border-box;
+      overflow-y: hidden;
+      padding: 12px 4px 4px;
+      max-height: calc(100vh - 132px);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 14px 14px;
+      background: var(--surface-soft);
     }
+
     .kanban-board {
       display: flex;
-      gap: 10px;
-      padding-right: 20px;
-      box-sizing: border-box;
+      gap: 12px;
+      padding-bottom: 12px;
+      min-height: 100%;
     }
-    /* Каждый столбец; ширина определяется динамически (600px для непустых, 300px для пустых) */
+
     .column {
       display: flex;
       flex-direction: column;
-      border: 1px solid #ddd;
-      background-color: #f5f5f5;
-      box-sizing: border-box;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
+
     .column-header {
-      padding: 10px;
-      background-color: #eee;
-      box-sizing: border-box;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 10px 12px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
     }
-    .column-header .column-sum {
-      font-weight: bold;
-      margin-bottom: 5px;
+
+    .column-sum {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
     }
-    .column-header .column-title {
-      font-size: 16px;
-      font-weight: bold;
+
+    .column-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
     }
-    /* Контент столбца с вертикальной прокруткой */
+
     .column-content {
       overflow-y: auto;
       padding: 10px;
-      max-height: calc(100vh - 50px - 70px);
-      box-sizing: border-box;
+      max-height: calc(100vh - 220px);
     }
-    /* Стиль для выделенного столбца (drop target) */
-    .column-content.drop-target {
-      border: 2px dashed #007bff;
-      background-color: #e6f7ff;
-    }
-    /* Карточка задачи */
+
     .task {
-      background-color: #e9edf5;
+      background: var(--surface);
       margin-bottom: 10px;
       padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      max-width: 580px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
       word-wrap: break-word;
-      box-sizing: border-box;
+      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.05);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-    .task.dragging {
-      opacity: 0.5;
+
+    .task:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(17, 24, 39, 0.1);
     }
-    /* Боковое меню: выдвигается из левой стороны, ширина 700px */
+
+    .task p,
+    .task ul {
+      margin: 6px 0;
+      padding-left: 16px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .task > div {
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .task a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .task a:hover { text-decoration: underline; }
+
+    .task-highlight {
+      background-color: var(--highlight);
+      border-color: #a6efc2;
+    }
+
+    .description-content {
+      display: none;
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface-soft);
+    }
+
+    .description-toggle {
+      cursor: pointer;
+      color: var(--accent);
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .menu-button {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 52px;
+      height: 52px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      z-index: 1002;
+      cursor: pointer;
+      font-size: 22px;
+      box-shadow: var(--shadow);
+    }
+
     .sidebar {
       position: fixed;
       top: 0;
       left: 0;
-      width: 700px;
+      width: min(760px, 92vw);
       height: 100vh;
-      background-color: #333;
-      color: white;
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
       overflow-y: auto;
       z-index: 1001;
-      padding: 10px;
-      box-sizing: border-box;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
+      padding: 14px;
+      transform: translateX(-102%);
+      transition: transform 0.25s ease;
     }
-    .sidebar.open {
-      transform: translateX(0);
-    }
-    /* Внутри меню – две колонки */
+
+    .sidebar.open { transform: translateX(0); }
+
     .sidebar-columns {
       display: flex;
       gap: 10px;
-      box-sizing: border-box;
     }
+
     .sidebar-column {
       flex: 1;
+      background: var(--sidebar-surface);
+      border-radius: 10px;
+      padding: 6px;
     }
+
     .sidebar-column h3 {
-      margin: 10px 0 5px 0;
-      padding: 5px;
-      border-bottom: 1px solid #444;
+      margin: 4px 0 6px;
+      padding: 8px;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     }
+
     .sidebar-column ul {
       list-style: none;
       padding: 0;
       margin: 0;
     }
+
     .sidebar-column ul li {
       padding: 8px;
-      border-bottom: 1px solid #444;
+      border-radius: 8px;
       cursor: pointer;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 13px;
     }
+
     .sidebar-column ul li:hover {
-      background-color: #555;
-    }
-    /* Кнопка открытия меню: расположена в левом нижнем углу */
-    .menu-button {
-      position: fixed;
-      bottom: 20px;
-      left: 20px;
-      width: 50px;
-      height: 50px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 50%;
-      z-index: 1002;
-      cursor: pointer;
-      font-size: 24px;
-      line-height: 50px;
-      text-align: center;
-    }
-    .description-content {
-      display: none;
-      margin-top: 5px;
-    }
-    .description-toggle {
-        cursor: pointer;
-        color: #007bff;
-        text-decoration: underline;
-        background: none;
-        border: none;
-        padding: 0;
-        font-size: 1em;
-    }
-    .task-highlight {
-      background-color: #d4fdd4; /* светло-салатовый фон для задач с меткой */
+      background: rgba(255, 255, 255, 0.14);
     }
   </style>
 </head>
-<body>
-  <!-- Кнопка для показа/скрытия бокового меню -->
+<body data-theme="glass">
+  {% macro task_card(task, board_type) -%}
+  {% set highlight = task.label is defined and label_to_match in task.label %}
+  <div class="task{% if highlight %} task-highlight{% endif %}">
+    <div><strong>Номер:</strong> <a href="https://sfera.inno.local/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a></div>
+    <div><strong>Название:</strong> {{ task.name }}</div>
+    {% if task.description | trim and task.description != ' ' %}
+      <div>
+        <button class="description-toggle" onclick="toggleDescription('{{ board_type }}', '{{ task.number }}')">Показать описание</button>
+        <div id="desc-{{ board_type }}-{{ task.number }}" class="description-content">
+          {{ task.description | safe | replace('<p>&nbsp;</p>', '') | replace('&nbsp;', '') | trim }}
+        </div>
+      </div>
+    {% endif %}
+    <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
+    <div><strong>Дата:</strong> {{ task.date }}</div>
+    <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+    <div><strong>Оценка:</strong> {{ task.estimation }}</div>
+    {% if task.parents %}
+      <div><strong>Родительские задачи:</strong>
+        <ul>
+          {% for parent in task.parents %}
+            <li>
+              <a href="https://sfera.inno.local/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>
+              {% if parent.name %} — {{ parent.name }}{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+    {% if task.label %}
+      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
+    {% endif %}
+  </div>
+  {%- endmacro %}
+
   <button class="menu-button" onclick="toggleSidebar()">☰</button>
 
-  <!-- Боковое меню, выдвигающееся из левой стороны -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-columns">
       <div class="sidebar-column">
         <h3>Исполнители</h3>
         <ul>
           {% for assignee in grouped_tasks.keys() %}
-          <li onclick="showKanbanBoard('assignee', '{{ assignee }}'); toggleSidebar();">
-            {{ assignee }}
-          </li>
+          <li onclick="showKanbanBoard('assignee', '{{ assignee }}'); toggleSidebar();">{{ assignee }}</li>
           {% endfor %}
         </ul>
       </div>
@@ -201,19 +436,25 @@
         <h3>Системы</h3>
         <ul>
           {% for system in grouped_systems.keys() %}
-          <li onclick="showKanbanBoard('system', '{{ system }}'); toggleSidebar();">
-            {{ system }}
-          </li>
+          <li onclick="showKanbanBoard('system', '{{ system }}'); toggleSidebar();">{{ system }}</li>
           {% endfor %}
         </ul>
       </div>
     </div>
   </div>
 
-  <!-- Основное содержимое: доски для исполнителей и систем -->
   <div class="content">
+    <div class="topbar">
+      <button type="button" class="theme-btn" data-theme="glass" onclick="setTheme('glass')">Glass</button>
+      <button type="button" class="theme-btn" data-theme="compact" onclick="setTheme('compact')">Compact</button>
+      <button type="button" class="theme-btn" data-theme="dark" onclick="setTheme('dark')">Dark</button>
+      <button type="button" class="theme-btn" data-theme="sunset" onclick="setTheme('sunset')">Sunset</button>
+      <button type="button" class="theme-btn" data-theme="forest" onclick="setTheme('forest')">Forest</button>
+      <button type="button" class="theme-btn" data-theme="ocean" onclick="setTheme('ocean')">Ocean</button>
+      <button type="button" class="theme-btn" data-theme="mono" onclick="setTheme('mono')">Mono</button>
+    </div>
+
     <div id="kanban-areas">
-      {# Доски для исполнителей #}
       {% for assignee, tasks in grouped_tasks.items() %}
       <div class="area" id="kanban-assignee-{{ assignee }}">
         <div class="area-header">
@@ -225,52 +466,15 @@
             {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
             {% for status in statuses %}
               {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
               <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
                 <div class="column-header">
-                  <div class="column-sum">
-                    Сумма: {{ tasks_for_status | sum(attribute='estimation') }}
-                  </div>
+                  <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
                   <div class="column-title">{{ status }}</div>
                 </div>
                 <div class="column-content">
                   {% for task in tasks_for_status %}
-                  {% set highlight = task.label is defined and label_to_match in task.label %}
-                  <div class="task{% if highlight %} task-highlight{% endif %}">
-                    <div>
-                      <strong>Номер:</strong>
-                      <a href="https://sfera.inno.local/tasks/area/SUPPGCCSR/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">
-                        {{ task.number }}
-                      </a>
-                    </div>
-                    <div><strong>Название:</strong> {{ task.name }}</div>
-                    {% if task.description | trim and task.description != ' ' %}
-                      <div>
-                        <button class="description-toggle" onclick="toggleDescription('assignee', '{{ task.number }}')">Показать описание</button>
-                        <div id="desc-assignee-{{ task.number }}" class="description-content">
-                          {{ task.description | safe | replace('<p>&nbsp;</p>', '') | replace('&nbsp;', '') | trim }}
-                        </div>
-                      </div>
-                    {% endif %}
-                    <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
-                    <div><strong>Дата:</strong> {{ task.date }}</div>
-                    <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                    <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    {% if task.relation and task.relation != 'Без связи' %}
-                      {% set valid_relations = task.relation%}
-
-                      {% if valid_relations %}
-                        <div><strong>Связи:</strong>
-                          <ul>
-                            <li>{{ valid_relations.name }}</li>
-                          </ul>
-                        </div>
-                      {% endif %}
-                    {% endif %}
-                    {% if task.label %}
-                      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
-                    {% endif %}
-                  </div>
+                    {{ task_card(task, 'assignee') }}
                   {% endfor %}
                 </div>
               </div>
@@ -280,11 +484,10 @@
       </div>
       {% endfor %}
 
-      {# Доски для систем #}
       {% for system, tasks in grouped_systems.items() %}
       <div class="area" id="kanban-system-{{ system }}">
         <div class="area-header">
-          <div class="group-title">{{ assignee }}</div>
+          <div class="group-title">{{ system }}</div>
           <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
         </div>
         <div class="board-container">
@@ -292,107 +495,95 @@
             {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
             {% for status in statuses %}
               {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
-              {% set col_width = 600 if tasks_for_status|length > 0 else 300 %}
+              {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
               <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
                 <div class="column-header">
-                  <div class="column-sum">
-                    Сумма: {{ tasks_for_status | sum(attribute='estimation') }}
-                  </div>
+                  <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
                   <div class="column-title">{{ status }}</div>
                 </div>
                 <div class="column-content">
                   {% for task in tasks_for_status %}
-                  {% set highlight = task.label is defined and label_to_match in task.label %}
-                  <div class="task{% if highlight %} task-highlight{% endif %}">
-                    <div>
-                      <strong>Номер:</strong>
-                      <a href="https://sfera.inno.local/tasks/area/SUPPGCCSR/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">
-                        {{ task.number }}
-                      </a>
-                    </div>
-                    <div><strong>Название:</strong> {{ task.name }}</div>
-                    {% if task.description and task.description | replace('&nbsp;', '') | replace('<p></p>', '') | replace('<p>&nbsp;</p>', '') | trim %}
-                      <div>
-                        <button class="description-toggle" onclick="toggleDescription('system', '{{ task.number }}')">Показать описание</button>
-                        <div id="desc-system-{{ task.number }}" class="description-content">
-                          {{ task.description | safe | replace('<p>&nbsp;</p>', '') | replace('&nbsp;', '') | trim }}
-                        </div>
-                      </div>
-                    {% endif %}
-                    <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
-                    <div><strong>Дата:</strong> {{ task.date }}</div>
-                    <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-                    <div><strong>Оценка:</strong> {{ task.estimation }}</div>
-                    {% if task.relation and task.relation != 'Без связи' %}
-                      {% set valid_relations = task.relation%}
-
-                      {% if valid_relations %}
-                        <div><strong>Связи:</strong>
-                          <ul>
-                            <li>{{ valid_relations.name }}</li>
-                          </ul>
-                        </div>
-                      {% endif %}
-                    {% endif %}
-                    {% if task.label %}
-                      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
-                    {% endif %}
-                  </div>
+                    {{ task_card(task, 'system') }}
                   {% endfor %}
                 </div>
               </div>
             {% endfor %}
           </div>
         </div>
-        </div>
+      </div>
       {% endfor %}
     </div>
   </div>
 
-    <script>
-      function toggleSidebar() {
-        document.getElementById('sidebar').classList.toggle('open');
+  <script>
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function showKanbanBoard(type, id) {
+      document.querySelectorAll('.area').forEach(function(area) {
+        area.classList.remove('active');
+      });
+      var board = document.getElementById('kanban-' + type + '-' + id);
+      if (board) {
+        board.classList.add('active');
       }
+    }
 
-      function showKanbanBoard(type, id) {
-        document.querySelectorAll('.area').forEach(function(area) {
-          area.classList.remove('active');
-        });
-        var board = document.getElementById('kanban-' + type + '-' + id);
-        if (board) {
-          board.classList.add('active');
-        }
+    function toggleDescription(type, id) {
+      const content = document.getElementById(`desc-${type}-${id}`);
+      if (!content) return;
+
+      const button = content.previousElementSibling;
+      if (content.style.display === 'none' || content.style.display === '') {
+        content.style.display = 'block';
+        if (button) button.textContent = 'Скрыть описание';
+      } else {
+        content.style.display = 'none';
+        if (button) button.textContent = 'Показать описание';
       }
+    }
 
-      function toggleDescription(type, id) {
-        const content = document.getElementById(`desc-${type}-${id}`);
-        if (!content) return;
+    const availableThemes = ['glass', 'compact', 'dark', 'sunset', 'forest', 'ocean', 'mono'];
 
-        const button = content.previousElementSibling;
-        if (content.style.display === 'none' || content.style.display === '') {
-          content.style.display = 'block';
-          if (button) button.textContent = 'Скрыть описание';
-        } else {
-          content.style.display = 'none';
-          if (button) button.textContent = 'Показать описание';
-        }
+    function setTheme(theme) {
+      const validTheme = availableThemes.includes(theme) ? theme : 'glass';
+      document.body.setAttribute('data-theme', validTheme);
+      document.querySelectorAll('.theme-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.theme === validTheme);
+      });
+      try {
+        localStorage.setItem('kanbanTheme', validTheme);
+      } catch (_) {
+        // ignore storage limitations
       }
+    }
 
-      function toggleInvalid(type, id) {
-        const content = document.getElementById(`desc-invalid-${type}-${id}`);
-        if (!content) return;
-
-        const button = content.previousElementSibling;
-        if (content.style.display === 'none' || content.style.display === '') {
-          content.style.display = 'block';
-          if (button) button.textContent = 'Скрыть некорректные связи';
-        } else {
-          content.style.display = 'none';
-          if (button) button.textContent = 'Показать некорректные связи';
-        }
+    function getSavedTheme() {
+      try {
+        return localStorage.getItem('kanbanTheme');
+      } catch (_) {
+        return null;
       }
+    }
 
-      window.showKanbanBoard = showKanbanBoard;
-    </script>
+    function initView() {
+      document.querySelectorAll('.theme-btn').forEach((btn) => {
+        btn.addEventListener('click', () => setTheme(btn.dataset.theme));
+      });
+
+      setTheme(getSavedTheme() || 'glass');
+
+      const firstAssigneeArea = document.querySelector('[id^="kanban-assignee-"]');
+      if (firstAssigneeArea) {
+        firstAssigneeArea.classList.add('active');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initView);
+
+    window.showKanbanBoard = showKanbanBoard;
+    window.setTheme = setTheme;
+  </script>
 </body>
 </html>
