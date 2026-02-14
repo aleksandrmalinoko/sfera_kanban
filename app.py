@@ -9,15 +9,6 @@ label_to_match = None
 selected_area = DEFAULT_AREA
 
 
-def render_query(error=None):
-    return render_template(
-        'query.html',
-        areas=AVAILABLE_AREAS,
-        selected_area=selected_area,
-        error=error,
-    )
-
-
 def sort_by_order(grouped_items, order):
     ordered_keys = sorted(grouped_items.keys(), key=lambda x: (order.index(x) if x in order else len(order)))
     return {key: grouped_items[key] for key in ordered_keys}
@@ -43,7 +34,7 @@ def query_page():
     """
     Стартовая страница с полем для ввода запроса.
     """
-    return render_query()
+    return render_template('query.html', areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
 @app.route('/fetch-tasks', methods=['POST'])
@@ -68,7 +59,8 @@ def fetch_tasks():
 
         return redirect(url_for('kanban'))
     except Exception as e:
-        return render_query(error=f"Ошибка: {str(e)}")
+        print(f"Ошибка: {str(e)}")
+        return render_template('query.html', error=f"Ошибка: {str(e)}", areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
 @app.route('/kanban')
