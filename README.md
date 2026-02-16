@@ -16,9 +16,14 @@
 
 Можно передать путь к конфигу через переменную окружения:
 
-```bash
-export SFERA_KANBAN_CONFIG=/path/to/app.ini
-```
+- Linux/macOS:
+  ```bash
+  export SFERA_KANBAN_CONFIG=/path/to/app.ini
+  ```
+- Windows (PowerShell):
+  ```powershell
+  $env:SFERA_KANBAN_CONFIG = "C:\path\to\app.ini"
+  ```
 
 ## Запуск из исходников
 
@@ -29,6 +34,10 @@ python app.py
 
 ## Сборка в исполняемый файл (PyInstaller)
 
+> Важно: для `--add-data` в Linux/macOS разделитель `:`, в Windows — `;`.
+
+### Linux/macOS
+
 ```bash
 pip install -r requirements.txt
 pyinstaller --onefile --name sfera-kanban \
@@ -38,6 +47,24 @@ pyinstaller --onefile --name sfera-kanban \
   app.py
 ```
 
-Исполняемый файл появится в `dist/sfera-kanban`.
+### Windows (PowerShell)
 
-После сборки рядом с бинарником нужно положить `config/app.ini` (или передать путь через `SFERA_KANBAN_CONFIG`).
+```powershell
+pip install -r requirements.txt
+pyinstaller --onefile --name sfera-kanban `
+  --add-data "templates;templates" `
+  --add-data "static;static" `
+  --add-data "config/app.ini.example;config" `
+  app.py
+```
+
+Исполняемый файл появится в `dist/`.
+
+После сборки положите рядом с бинарником файл `config/app.ini` с вашими данными.
+
+## Если при запуске EXE появляется ошибка `Failed to execute script 'app'`
+
+Проверьте:
+1. Есть ли рядом с EXE папка `config` и файл `app.ini`.
+2. В `app.ini` заполнены `username` и `password`.
+3. При сборке добавлены `templates` и `static` через `--add-data` с правильным разделителем (`:` или `;`).
