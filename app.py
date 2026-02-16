@@ -1,14 +1,29 @@
 from datetime import datetime
+from pathlib import Path
+import sys
 from threading import Lock, Thread
 from uuid import uuid4
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from utils.app_config import ASSIGNEE_ORDER, AVAILABLE_AREAS, DEFAULT_AREA, SYSTEM_ORDER
+from utils.app_config import (
+    APP_DEBUG,
+    APP_HOST,
+    APP_PORT,
+    ASSIGNEE_ORDER,
+    AVAILABLE_AREAS,
+    DEFAULT_AREA,
+    SYSTEM_ORDER,
+)
 from utils.sfera_api import generate_tasks_dates, generate_tasks_label
 from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
 
-app = Flask(__name__)
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+app = Flask(
+    __name__,
+    template_folder=str(RESOURCE_DIR / "templates"),
+    static_folder=str(RESOURCE_DIR / "static"),
+)
 tasks = []
 label_to_match = None
 selected_area = DEFAULT_AREA
@@ -262,4 +277,4 @@ def kanban():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host=APP_HOST, port=APP_PORT, debug=APP_DEBUG)
