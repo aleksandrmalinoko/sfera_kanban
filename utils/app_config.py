@@ -8,23 +8,57 @@ from pathlib import Path
 
 DEFAULT_CONFIG_ENV_VAR = "SFERA_KANBAN_CONFIG"
 DEFAULT_CONFIG_RELATIVE_PATH = Path("config") / "app.ini"
+EXAMPLE_CONFIG_RELATIVE_PATH = Path("config") / "app.ini.example"
 
 
 class AppConfigError(RuntimeError):
     """Raised when application configuration is missing or invalid."""
 
 
-def _base_dir() -> Path:
+def _run_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
 
 
+def _bundle_dir() -> Path | None:
+    meipass = getattr(sys, "_MEIPASS", None)
+    return Path(meipass).resolve() if meipass else None
+
+
+def _existing(path: Path) -> Path | None:
+    return path.resolve() if path.exists() else None
+
+
 def resolve_config_path() -> Path:
     env_path = os.getenv(DEFAULT_CONFIG_ENV_VAR)
     if env_path:
-        return Path(env_path).expanduser().resolve()
-    return (_base_dir() / DEFAULT_CONFIG_RELATIVE_PATH).resolve()
+        resolved = Path(env_path).expanduser().resolve()
+        if resolved.exists():
+            return resolved
+        raise AppConfigError(f"Файл из {DEFAULT_CONFIG_ENV_VAR} не найден: {resolved}")
+
+    candidates: list[Path] = [
+        _run_dir() / DEFAULT_CONFIG_RELATIVE_PATH,
+        _run_dir() / EXAMPLE_CONFIG_RELATIVE_PATH,
+    ]
+
+    bundle = _bundle_dir()
+    if bundle:
+        candidates.extend([
+            bundle / DEFAULT_CONFIG_RELATIVE_PATH,
+            bundle / EXAMPLE_CONFIG_RELATIVE_PATH,
+        ])
+
+    for candidate in candidates:
+        resolved = _existing(candidate)
+        if resolved:
+            return resolved
+
+    raise AppConfigError(
+        "Не найден файл конфигурации. Ожидается config/app.ini рядом с приложением "
+        f"или путь через {DEFAULT_CONFIG_ENV_VAR}."
+    )
 
 
 def _split_csv(raw_value: str) -> list[str]:
@@ -34,21 +68,13 @@ def _split_csv(raw_value: str) -> list[str]:
 @lru_cache(maxsize=1)
 def get_config() -> configparser.ConfigParser:
     config_path = resolve_config_path()
-    if not config_path.exists():
-        raise AppConfigError(
-            f"Файл конфигурации не найден: {config_path}. "
-            "Создайте его на основе config/app.ini.example."
-        )
-
     parser = configparser.ConfigParser()
     parser.read(config_path, encoding="utf-8")
 
     required_sections = ["app", "sfera", "ordering"]
     missing_sections = [section for section in required_sections if not parser.has_section(section)]
     if missing_sections:
-        raise AppConfigError(
-            "В конфигурации отсутствуют разделы: " + ", ".join(missing_sections)
-        )
+        raise AppConfigError("В конфигурации отсутствуют разделы: " + ", ".join(missing_sections))
 
     return parser
 
@@ -66,9 +92,7 @@ DEFAULT_AREA = _get_required(CONFIG, "app", "default_area")
 AVAILABLE_AREAS = _split_csv(_get_required(CONFIG, "app", "available_areas"))
 
 if DEFAULT_AREA not in AVAILABLE_AREAS:
-    raise AppConfigError(
-        "Значение [app] default_area должно входить в [app] available_areas"
-    )
+    raise AppConfigError("Значение [app] default_area должно входить в [app] available_areas")
 
 APP_HOST = CONFIG.get("app", "host", fallback="127.0.0.1").strip() or "127.0.0.1"
 APP_PORT = CONFIG.getint("app", "port", fallback=5000)

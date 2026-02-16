@@ -1,4 +1,6 @@
 from datetime import datetime
+from pathlib import Path
+import sys
 from threading import Lock, Thread
 from uuid import uuid4
 
@@ -16,7 +18,12 @@ from utils.app_config import (
 from utils.sfera_api import generate_tasks_dates, generate_tasks_label
 from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
 
-app = Flask(__name__)
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+app = Flask(
+    __name__,
+    template_folder=str(RESOURCE_DIR / "templates"),
+    static_folder=str(RESOURCE_DIR / "static"),
+)
 tasks = []
 label_to_match = None
 selected_area = DEFAULT_AREA
