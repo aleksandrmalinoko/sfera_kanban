@@ -3,16 +3,20 @@ import time
 import requests
 import urllib3
 from requests import RequestException
-from utils import sfera_secrets
-from utils.app_config import DEFAULT_AREA
+from utils.app_config import (
+    DEFAULT_AREA,
+    REQUEST_RETRIES,
+    REQUEST_TIMEOUT_SECONDS,
+    RETRY_SLEEP_SECONDS,
+    SFERA_BASE_URL,
+    SFERA_PASSWORD,
+    SFERA_USERNAME,
+)
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-BASE_URL = "https://sfera.inno.local"
-REQUEST_TIMEOUT_SECONDS = 30
-REQUEST_RETRIES = 3
-RETRY_SLEEP_SECONDS = 2
+BASE_URL = SFERA_BASE_URL
 TASK_URL = f"{BASE_URL}/app/tasks/api/v1/entities"
 LOGIN_URL = f"{BASE_URL}/api/auth/login"
 sfera_attributes = ['number', 'name', 'description', 'relations', 'status', 'assignee', 'systems', 'dueDate', 'estimation', 'label', 'parent']
@@ -76,8 +80,8 @@ def get_sfera_token(progress_callback=None):
         "Content-Type": "application/json"
     }
     get_token_body = {
-        "username": sfera_secrets.sfera_user,
-        "password": sfera_secrets.sfera_password
+        "username": SFERA_USERNAME,
+        "password": SFERA_PASSWORD
     }
     _notify(progress_callback, "Авторизация в Sfera...")
     response = _request_with_retries(

@@ -4,7 +4,15 @@ from uuid import uuid4
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from utils.app_config import ASSIGNEE_ORDER, AVAILABLE_AREAS, DEFAULT_AREA, SYSTEM_ORDER
+from utils.app_config import (
+    APP_DEBUG,
+    APP_HOST,
+    APP_PORT,
+    ASSIGNEE_ORDER,
+    AVAILABLE_AREAS,
+    DEFAULT_AREA,
+    SYSTEM_ORDER,
+)
 from utils.sfera_api import generate_tasks_dates, generate_tasks_label
 from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
 
@@ -262,4 +270,4 @@ def kanban():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host=APP_HOST, port=APP_PORT, debug=APP_DEBUG)
