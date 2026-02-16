@@ -68,7 +68,7 @@ def _split_csv(raw_value: str) -> list[str]:
 @lru_cache(maxsize=1)
 def get_config() -> configparser.ConfigParser:
     config_path = resolve_config_path()
-    parser = configparser.ConfigParser()
+    parser = configparser.ConfigParser(interpolation=None)
     parser.read(config_path, encoding="utf-8")
 
     required_sections = ["app", "sfera", "ordering"]
