@@ -55,6 +55,15 @@ label_to_match = None
 selected_area = DEFAULT_AREA
 last_fetch_params = None
 projects_loading = False
+
+# При старте подгружаем последний сохранённый pickle (удобно для разработки)
+_pickle_path = Path('tasks_dict.pickle')
+if _pickle_path.exists():
+    try:
+        with open(_pickle_path, 'rb') as _f:
+            tasks = pickle.load(_f)
+    except Exception:
+        tasks = []
 projects_loading_lock = Lock()
 
 fetch_jobs = {}
