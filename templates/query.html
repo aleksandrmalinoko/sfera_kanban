@@ -88,7 +88,6 @@
       width: 140px;
     }
 
-    .status-box,
     .error-box {
       margin-bottom: 15px;
       padding: 10px;
@@ -96,22 +95,64 @@
       text-align: left;
       font-size: 14px;
       line-height: 1.4;
-    }
-
-    .status-box {
-      border: 1px solid #b6d4fe;
-      background: #e7f1ff;
-      color: #084298;
-      display: none;
-      white-space: pre-wrap;
-      max-height: 180px;
-      overflow-y: auto;
-    }
-
-    .error-box {
       border: 1px solid #f5c2c7;
       color: #842029;
       background: #f8d7da;
+    }
+
+    /* Прогресс-секция — скрыта пока не запущена загрузка */
+    .progress-section {
+      display: none;
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    .progress-bar-track {
+      height: 8px;
+      background: #dde3ec;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #007bff;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-bar-fill.indeterminate {
+      width: 40%;
+      animation: indeterminate 1.2s infinite ease-in-out;
+    }
+
+    @keyframes indeterminate {
+      0%   { margin-left: -40%; }
+      100% { margin-left: 100%; }
+    }
+
+    .progress-status {
+      font-size: 13px;
+      color: #084298;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 6px;
+    }
+
+    .progress-log {
+      font-size: 12px;
+      color: #444;
+      background: #f3f5f9;
+      border: 1px solid #d0d7e3;
+      border-radius: 4px;
+      padding: 6px 8px;
+      height: 80px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
     }
   </style>
 </head>
@@ -121,7 +162,13 @@
       <div class="error-box">{{ error }}</div>
     {% endif %}
 
-    <div class="status-box" id="status-box"></div>
+    <div class="progress-section" id="progress-section">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill indeterminate" id="progress-bar"></div>
+      </div>
+      <div class="progress-status" id="progress-status">Подготовка…</div>
+      <div class="progress-log" id="progress-log"></div>
+    </div>
 
     <form id="fetch-form" action="/fetch-tasks" method="POST" onsubmit="return startFetch(event)">
       <select name="area" id="area-select">
@@ -221,14 +268,36 @@
       return true;
     }
 
-    function setStatus(message, isError = false) {
-      const box = document.getElementById('status-box');
-      box.style.display = 'block';
-      box.style.borderColor = isError ? '#f5c2c7' : '#b6d4fe';
-      box.style.background = isError ? '#f8d7da' : '#e7f1ff';
-      box.style.color = isError ? '#842029' : '#084298';
-      box.textContent = message;
-      box.scrollTop = box.scrollHeight;
+    function showProgress() {
+      document.getElementById('progress-section').style.display = 'block';
+    }
+
+    function setProgressBar(current, total) {
+      const bar = document.getElementById('progress-bar');
+      if (total <= 0) {
+        bar.classList.add('indeterminate');
+        bar.style.width = '';
+      } else {
+        bar.classList.remove('indeterminate');
+        bar.style.width = Math.round(current / total * 100) + '%';
+      }
+    }
+
+    function setProgressStatus(message, isError = false) {
+      const el = document.getElementById('progress-status');
+      el.textContent = message;
+      el.style.color = isError ? '#842029' : '#084298';
+    }
+
+    function appendLog(lines) {
+      const log = document.getElementById('progress-log');
+      log.textContent = lines.join('\n');
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function showError(message) {
+      setProgressStatus(message, true);
+      setProgressBar(0, 0);
     }
 
     async function pollStatus(jobId) {
@@ -238,29 +307,30 @@
 
         if (!data.ok) {
           clearInterval(statusPollInterval);
-          setStatus(data.error || 'Не удалось получить статус загрузки', true);
+          showError(data.error || 'Не удалось получить статус загрузки');
           document.getElementById('submit-btn').disabled = false;
           return;
         }
 
-        const logs = (data.logs || []).join('\n');
-        setStatus(logs || data.message || 'Идет загрузка...');
+        setProgressStatus(data.message || 'Идёт загрузка…');
+        setProgressBar(data.progress_current || 0, data.progress_total || 0);
+        appendLog(data.logs || []);
 
         if (data.status === 'done') {
           clearInterval(statusPollInterval);
-          setStatus((logs ? logs + '\n' : '') + 'Готово! Переход на канбан...');
+          setProgressBar(1, 1);
+          setProgressStatus('Готово! Переход на канбан…');
           window.location.href = '/kanban';
         }
 
         if (data.status === 'error') {
           clearInterval(statusPollInterval);
-          const err = data.error || 'Ошибка загрузки задач';
-          setStatus((logs ? logs + '\n' : '') + err + '\nМожно повторить запрос.', true);
+          showError(data.error || 'Ошибка загрузки задач');
           document.getElementById('submit-btn').disabled = false;
         }
       } catch (error) {
         clearInterval(statusPollInterval);
-        setStatus(`Ошибка при проверке статуса: ${error}`, true);
+        showError(`Ошибка при проверке статуса: ${error}`);
         document.getElementById('submit-btn').disabled = false;
       }
     }
@@ -274,7 +344,8 @@
 
       const submitBtn = document.getElementById('submit-btn');
       submitBtn.disabled = true;
-      setStatus('Запускаем загрузку задач...');
+      showProgress();
+      setProgressStatus('Запускаем загрузку задач…');
 
       const form = document.getElementById('fetch-form');
       const formData = new FormData(form);
@@ -288,7 +359,7 @@
         const data = await response.json();
         if (!response.ok || !data.ok) {
           submitBtn.disabled = false;
-          setStatus(data.error || 'Не удалось запустить загрузку', true);
+          showError(data.error || 'Не удалось запустить загрузку');
           return false;
         }
 
@@ -299,7 +370,7 @@
         statusPollInterval = setInterval(() => pollStatus(data.job_id), 1200);
       } catch (error) {
         submitBtn.disabled = false;
-        setStatus(`Ошибка запуска загрузки: ${error}`, true);
+        showError(`Ошибка запуска загрузки: ${error}`);
       }
 
       return false;

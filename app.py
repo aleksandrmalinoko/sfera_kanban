@@ -116,6 +116,8 @@ def create_job(mode, area, label=None, start_date=None, end_date=None):
             'label': label,
             'start_date': start_date,
             'end_date': end_date,
+            'progress_current': 0,
+            'progress_total': 0,
         }
     return job_id
 
@@ -148,6 +150,13 @@ def run_fetch_job(job_id):
     def progress_callback(message):
         append_job_log(job_id, message)
 
+    def progress_updater(current, total):
+        with fetch_jobs_lock:
+            job = fetch_jobs.get(job_id)
+            if job:
+                job['progress_current'] = current
+                job['progress_total'] = total
+
     _set_projects_loading()
     try:
         if mode == 'dates':
@@ -159,6 +168,7 @@ def run_fetch_job(job_id):
                 area,
                 progress_callback=progress_callback,
                 on_projects_done=_set_projects_done,
+                on_progress=progress_updater,
             )
             current_label = calculated_label
         else:
@@ -166,6 +176,7 @@ def run_fetch_job(job_id):
                 label, area,
                 progress_callback=progress_callback,
                 on_projects_done=_set_projects_done,
+                on_progress=progress_updater,
             )
             current_label = label
 
@@ -305,6 +316,8 @@ def fetch_status(job_id):
             'message': job['message'],
             'error': job['error'],
             'logs': job['logs'][-20:],
+            'progress_current': job.get('progress_current', 0),
+            'progress_total': job.get('progress_total', 0),
         })
 
 

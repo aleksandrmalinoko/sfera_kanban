@@ -384,6 +384,7 @@ def _generate_tasks_by_query(
     progress_callback=None,
     force_reload_projects=False,
     on_projects_done=None,
+    on_progress=None,
 ) -> list:
     """
     После загрузки задач запускает фоновую подгрузку UUID-проектов.
@@ -394,7 +395,11 @@ def _generate_tasks_by_query(
         return []
 
     _notify(progress_callback, "Запрос списка задач...")
+    if on_progress:
+        on_progress(0, 0)
     pages_count = get_pages_count(token, sfera_query, progress_callback)
+    if on_progress:
+        on_progress(0, pages_count)
 
     tasks_list = []
     all_consumer_uuids = set()
@@ -407,6 +412,8 @@ def _generate_tasks_by_query(
             if consumer_id and isinstance(consumer_id, str) and len(consumer_id) == 36:
                 all_consumer_uuids.add(consumer_id)
             tasks_list.append(task)
+        if on_progress:
+            on_progress(page + 1, pages_count)
 
     # Сохраняем в pickle сразу (с placeholder-значениями ⏳)
     with open('tasks_dict.pickle', 'wb') as f:
@@ -449,11 +456,11 @@ def _generate_tasks_by_query(
     return tasks_list
 
 
-def generate_tasks_label(query, area, progress_callback=None, on_projects_done=None):
+def generate_tasks_label(query, area, progress_callback=None, on_projects_done=None, on_progress=None):
     sfera_query = f"area%20%3D%20%27{area}%27%20and%20label%20%3D%20%27{query}%27"
-    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done)
+    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done, on_progress=on_progress)
 
 
-def generate_tasks_dates(start_date, end_date, label, area, progress_callback=None, on_projects_done=None):
+def generate_tasks_dates(start_date, end_date, label, area, progress_callback=None, on_projects_done=None, on_progress=None):
     sfera_query = f"area%20%3D%20%27{area}%27%20and%20dueDate%20%3C%3D%20%22{end_date}%22%20and%20dueDate%20%3E%3D%20%22{start_date}%22"
-    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done)
+    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done, on_progress=on_progress)
