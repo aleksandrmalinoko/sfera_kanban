@@ -153,8 +153,10 @@
     /* Карточка задачи */
     .task { background-color: var(--task-bg); margin-bottom: 8px; padding: 10px; border: 1px solid var(--task-border); border-radius: var(--radius-md); box-sizing: border-box; box-shadow: var(--card-shadow); font-size: 13px; }
     .task a { color: var(--task-link); }
-    /* Название задачи — одна строка с обрезкой, полное в title */
-    .task-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+    /* Название задачи — одна строка с обрезкой inline после метки, полное в title */
+    .task-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: calc(100% - 70px); vertical-align: bottom; }
+    /* Список родительских задач без лишних отступов */
+    .task .parents-list { margin: 2px 0 0 12px; padding: 0; list-style: disc; }
 
     .sidebar { position: fixed; top: 0; left: 0; width: 700px; height: 100vh; background-color: var(--sidebar-bg); color: white; overflow-y: auto; z-index: 1001; padding: 10px; box-sizing: border-box; transform: translateX(-100%); transition: transform 0.3s ease; }
     .sidebar.open { transform: translateX(0); }
@@ -198,12 +200,9 @@
     <div><strong>Оценка:</strong> {{ task.estimation }}</div>
     {% if task.parents %}
       <div><strong>Родительские задачи:</strong>
-        <ul>
+        <ul class="parents-list">
           {% for parent in task.parents %}
-            <li>
-              <a href="https://tasks.example.local/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>
-              {% if parent.name %} — {{ parent.name }}{% endif %}
-            </li>
+            <li><a href="https://tasks.example.local/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>{% if parent.name %} — {{ parent.name }}{% endif %}</li>
           {% endfor %}
         </ul>
       </div>
