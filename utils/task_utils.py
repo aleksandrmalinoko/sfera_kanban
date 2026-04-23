@@ -32,3 +32,18 @@ def group_tasks_by_system(tasks):
         grouped[system] = sort_tasks(grouped[system])
 
     return grouped
+
+def group_tasks_by_funding(tasks):
+    grouped = {}
+    for task in tasks:
+        funding_code = task.get('funding_code', '')
+        if not funding_code or funding_code == ' ':
+            key = 'Без источника'
+        else:
+            key = f"{funding_code}".strip()
+        grouped.setdefault(key, []).append(task)
+    
+    for funding in grouped:
+        grouped[funding] = sort_tasks(grouped[funding])
+    
+    return grouped

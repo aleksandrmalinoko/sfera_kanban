@@ -3,7 +3,13 @@ from pathlib import Path
 import sys
 from threading import Lock, Thread
 from uuid import uuid4
-
+from io import StringIO
+import csv
+import json
+import sqlite3
+import pickle
+from threading import Thread
+from flask import Response
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
 from utils.app_config import (
@@ -14,15 +20,36 @@ from utils.app_config import (
     AVAILABLE_AREAS,
     DEFAULT_AREA,
     SYSTEM_ORDER,
+    PROJECTS_ORDER,
+    CACHE_PROJECTS_ENABLED,
+    RESOURCE_DIR
 )
-from utils.sfera_api import generate_tasks_dates, generate_tasks_label
-from utils.task_utils import group_tasks_by_assignee, group_tasks_by_system
+from utils.sfera_api import (
+    generate_tasks_dates, 
+    generate_tasks_label, 
+    _init_funding_cache_db,
+    FUNDING_CACHE_DB,
+    FUNDING_CACHE_LOCK,
+    _get_funding_info_cached,
+    get_sfera_token,
+)
+from utils.task_utils import (
+    group_tasks_by_assignee, 
+    group_tasks_by_system, 
+    group_tasks_by_funding
+)
 
-RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+RESOURCE_APP_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+
+
+if CACHE_PROJECTS_ENABLED:
+    _init_funding_cache_db()
+
+
 app = Flask(
     __name__,
-    template_folder=str(RESOURCE_DIR / "templates"),
-    static_folder=str(RESOURCE_DIR / "static"),
+    template_folder=str(RESOURCE_APP_DIR / "templates"),
+    static_folder=str(RESOURCE_APP_DIR / "static"),
 )
 tasks = []
 label_to_match = None
@@ -45,6 +72,8 @@ def sort_assignees(grouped_tasks):
 def sort_systems(grouped_systems):
     return sort_by_order(grouped_systems, SYSTEM_ORDER)
 
+def sort_funding(grouped_fundings):
+    return sort_by_order(grouped_fundings, PROJECTS_ORDER)
 
 def generate_label(start, end):
     sd = datetime.strptime(start, "%Y-%m-%d")
@@ -138,6 +167,68 @@ def query_page():
     return render_template('query.html', areas=AVAILABLE_AREAS, selected_area=selected_area)
 
 
+@app.route('/api/v1/fetch-project-cache', methods=['GET'])
+def fetch_project_cache():
+    """
+    Возвращает прогресс загрузки/обновления кэша проектов.
+    Поддерживает ?force=true для принудительного обновления (в фоне).
+    """
+    force = request.args.get("force", "false").lower() == "true"
+    
+    # Статусы: 'idle' | 'loading' | 'completed'
+    status_file = RESOURCE_DIR / ".funding_cache_status.json"
+    try:
+        if status_file.exists():
+            with open(status_file, "r") as f:
+                status = json.load(f)
+        else:
+            status = {"status": "idle", "loaded": 0, "total": 0}
+    except Exception:
+        status = {"status": "error"}
+
+    # Если force=true — обновляем в фоне
+    if force and CACHE_PROJECTS_ENABLED:
+        def refresh():
+            try:
+                with FUNDING_CACHE_LOCK:
+                    conn = sqlite3.connect(FUNDING_CACHE_DB)
+                    cursor = conn.cursor()
+                    # Удаляем старые записи (или можно обновить по updated_at)
+                    cursor.execute("DELETE FROM funding_cache")
+                    conn.commit()
+                    conn.close()
+                
+                # Получаем текущий список задач и UUID из кэша
+                uuids = set()
+                try:
+                    if Path('tasks_dict.pickle').exists():
+                        with open('tasks_dict.pickle', 'rb') as f:
+                            tasks_list = pickle.load(f)
+                            for t in tasks_list:
+                                c = t.get("consumer_uuid")
+                                if isinstance(c, str) and len(c) == 36:
+                                    uuids.add(c)
+                except Exception:
+                    pass
+
+                # Загружаем заново (в той же функции _get_funding_info_cached)
+                token = get_sfera_token()
+                if token:
+                    res = _get_funding_info_cached(list(uuids), token=token)
+                    # Статус обновится при сохранении в DB
+            except Exception as e:
+                pass
+
+        Thread(target=refresh, daemon=True).start()
+        status["status"] = "loading"
+
+    return jsonify({
+        **status,
+        "cache_file": str(FUNDING_CACHE_DB),
+        "enabled": CACHE_PROJECTS_ENABLED
+    })
+
+
 @app.route('/start-fetch', methods=['POST'])
 def start_fetch():
     global selected_area
@@ -185,7 +276,7 @@ def fetch_status(job_id):
 @app.route('/fetch-tasks', methods=['POST'])
 def fetch_tasks():
     global tasks, label_to_match, selected_area, last_fetch_params
-
+    
     mode = request.form.get('mode')
     requested_area = request.form.get('area', DEFAULT_AREA)
     selected_area = requested_area if requested_area in AVAILABLE_AREAS else DEFAULT_AREA
@@ -200,18 +291,33 @@ def fetch_tasks():
             start_date = request.form.get('start_date')
             end_date = request.form.get('end_date')
             label = generate_label(start_date, end_date)
-            tasks = generate_tasks_dates(start_date, end_date, label, selected_area, progress_callback=progress_callback)
+            
+            force_reload_projects = (request.form.get("force_reload_projects") or "false").lower() == "true"
+            
+            tasks = generate_tasks_dates(
+                start_date, end_date, label,
+                selected_area,
+                progress_callback=progress_callback,
+                force_reload_projects=force_reload_projects
+            )
             label_to_match = label
             last_fetch_params = {
                 'mode': mode,
                 'area': selected_area,
-                'label': None,
                 'start_date': start_date,
-                'end_date': end_date,
+                'end_date': end_date
             }
         else:
             label = request.form.get('query_label')
-            tasks = generate_tasks_label(label, selected_area, progress_callback=progress_callback)
+
+            force_reload_projects = (request.form.get("force_reload_projects") or "false").lower() == "true"
+
+            tasks = generate_tasks_label(
+                label, 
+                selected_area, 
+                progress_callback=progress_callback,
+                force_reload_projects=force_reload_projects
+            )
             label_to_match = label
             last_fetch_params = {
                 'mode': mode,
@@ -264,16 +370,89 @@ def refresh_tasks():
 def kanban():
     grouped_tasks = group_tasks_by_assignee(tasks)
     grouped_systems = group_tasks_by_system(tasks)
+    grouped_funding = group_tasks_by_funding(tasks)
 
     grouped_tasks = sort_assignees(grouped_tasks)
     grouped_systems = sort_systems(grouped_systems)
+    grouped_funding = sort_funding(grouped_funding)
 
     return render_template(
         'kanban.html',
         grouped_tasks=grouped_tasks,
         grouped_systems=grouped_systems,
+        grouped_funding=grouped_funding,
         label_to_match=label_to_match,
     )
+
+
+@app.route('/export-csv')
+def export_csv():
+    fields_param = request.args.get('fields', 'number,name,status,assignee,funding_code,estimation,date,systems,label,parents').split(',')
+    
+    # Валидация полей — только разрешённые
+    allowed_fields = {
+        'number', 'name', 'description', 'status', 'assignee', 
+        'systems', 'date', 'estimation', 'label', 'parents',
+        'funding_code', 'funding_name'
+    }
+    selected_fields = [f for f in fields_param if f.strip() in allowed_fields]
+    
+    # Генерация CSV
+    output = StringIO()
+    writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+
+    # Заголовки (на русском)
+    field_labels = {
+        'number': 'Номер',
+        'name': 'Название',
+        'description': 'Описание',
+        'status': 'Статус',
+        'assignee': 'Исполнитель',
+        'systems': 'Системы',
+        'date': 'Дата',
+        'estimation': 'Оценка (ч)',
+        'label': 'Метки',
+        'parents': 'Родительские задачи',
+        'funding_code': 'Код Финансирования',
+        'funding_name': 'Источник финансирования'
+    }
+    
+    headers = [field_labels[f] for f in selected_fields]
+    writer.writerow(headers)
+
+    for task in tasks:
+        row = []
+        for field in selected_fields:
+            val = task.get(field)
+            
+            # Преобразование сложных типов в строку
+            if field == 'systems' and isinstance(val, list):
+                val = ', '.join(val) or ''
+            elif field == 'label' and isinstance(val, list):
+                val = ', '.join(val) or ''
+            elif field == 'parents':
+                if isinstance(val, list):
+                    parent_strs = [f"{p['number']} – {p.get('name', '')}" for p in val]
+                    val = '; '.join(parent_strs) or ''
+                else:
+                    val = ''
+            elif field == 'estimation':
+                val = f'{val:.1f}' if val is not None else ''
+            
+            # Приведение к строке
+            row.append(str(val) if val is not None else '')
+        
+        writer.writerow(row)
+
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv; charset=utf-8',
+        headers={
+            "Content-Disposition": f"attachment; filename=tasks_export_{datetime.now().date()}.csv"
+        }
+    )
+
 
 
 if __name__ == '__main__':

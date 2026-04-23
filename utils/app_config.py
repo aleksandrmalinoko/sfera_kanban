@@ -10,7 +10,6 @@ DEFAULT_CONFIG_ENV_VAR = "SFERA_KANBAN_CONFIG"
 DEFAULT_CONFIG_RELATIVE_PATH = Path("config") / "app.ini"
 EXAMPLE_CONFIG_RELATIVE_PATH = Path("config") / "app.ini.example"
 
-
 class AppConfigError(RuntimeError):
     """Raised when application configuration is missing or invalid."""
 
@@ -86,6 +85,14 @@ def _get_required(parser: configparser.ConfigParser, section: str, option: str) 
     return value
 
 
+def _resource_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+RESOURCE_DIR = _resource_dir()
+
+
 CONFIG = get_config()
 
 DEFAULT_AREA = _get_required(CONFIG, "app", "default_area")
@@ -107,3 +114,5 @@ RETRY_SLEEP_SECONDS = CONFIG.getint("sfera", "retry_sleep_seconds", fallback=2)
 
 ASSIGNEE_ORDER = _split_csv(CONFIG.get("ordering", "assignee_order", fallback=""))
 SYSTEM_ORDER = _split_csv(CONFIG.get("ordering", "system_order", fallback=""))
+PROJECTS_ORDER = _split_csv(CONFIG.get("ordering", "project_order", fallback=""))
+CACHE_PROJECTS_ENABLED = CONFIG.getboolean("app", "cache_projects", fallback=True)

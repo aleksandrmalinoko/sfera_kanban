@@ -157,6 +157,26 @@
     .description-content { display: none; margin-top: 5px; }
     .description-toggle { cursor: pointer; color: var(--description-link); text-decoration: underline; background: none; border: none; padding: 0; font-size: 1em; }
     .task-highlight { background-color: var(--highlight-bg); }
+    .kanban-columns-container {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+        overflow-x: auto; /* скролл по горизонтали, если много столбцов */
+    }
+
+    .kanban-column-wrapper {
+        flex: 1 0 auto; /* растягиваемся на всё доступное место */
+        min-width: 240px;
+    }
+
+    .kanban-column {
+        display: flex;
+        flex-direction: column;
+        background-color: #f5f5f5;
+        border-radius: 6px;
+        padding: 8px;
+        height: fit-content; /* или min-height: 100px */
+    }
   </style>
 </head>
 <body>
@@ -179,6 +199,11 @@
     <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
     <div><strong>Дата:</strong> {{ task.date }}</div>
     <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
+    <!-- Добавляем Источник финансирования (если данные есть) -->
+    {% if task.funding_code or task.funding_name %}  
+    <div><strong>Источник финансирования: </strong>
+      <span>{{ task.funding_code }}</span> — {{ task.funding_name }}</div>
+    {% endif %}
     <div><strong>Оценка:</strong> {{ task.estimation }}</div>
     {% if task.parents %}
       <div><strong>Родительские задачи:</strong>
@@ -193,7 +218,7 @@
       </div>
     {% endif %}
     {% if task.label %}
-      <div><strong>Метки:</strong> {{ task.label | join(', ') }}</div>
+      <div><strong>Метки:</strong> {{ task.label }}</div>
     {% endif %}
   </div>
   {%- endmacro %}
@@ -218,6 +243,14 @@
           {% endfor %}
         </ul>
       </div>
+      <div class="sidebar-column">
+        <h3>Проекты</h3>
+        <ul>
+          {% for funding in grouped_funding.keys() %}
+          <li onclick="showKanbanBoard('funding', '{{ funding }}'); toggleSidebar();">{{ funding }}</li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -228,6 +261,7 @@
       <button class="theme-btn" data-theme="night" onclick="setTheme('night')">Night</button>
       <button class="theme-btn" data-theme="contrast" onclick="setTheme('contrast')">Contrast</button>
       <button id="refresh-btn" class="refresh-btn" onclick="refreshTasks()">Обновить</button>
+      <button id="exportBtn" class="btn btn-primary">Сохранить</button>
     </div>
 
     <div id="kanban-areas">
@@ -246,7 +280,7 @@
                 {% for status in statuses %}
                   {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
                   {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
-                  <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                  <div class="column" style="flex: 1; min-width: 260px;">
                     <div class="column-header">
                       <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
                       <div class="column-title">{{ status }}</div>
@@ -281,7 +315,7 @@
                 {% for status in statuses %}
                   {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
                   {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
-                  <div class="column" data-status="{{ status }}" style="flex: 0 0 {{ col_width }}px;">
+                  <div class="column" style="flex: 1; min-width: 260px;">
                     <div class="column-header">
                       <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
                       <div class="column-title">{{ status }}</div>
@@ -300,9 +334,70 @@
         </div>
       </div>
       {% endfor %}
+
+      {% for funding, tasks in grouped_funding.items() %}
+      <div class="area" id="kanban-funding-{{ funding }}">
+        <div class="area-scroll">
+          <div class="area-inner">
+            <div class="board-container">
+              <div class="board-content">
+                <div class="area-header">
+                  <div class="group-title">{{ funding }}</div>
+                  <div class="group-total">Сумма оценок: {{ tasks | sum(attribute='estimation') }}</div>
+                </div>
+                <div class="kanban-board">
+                {% set statuses = ["Создано", "Анализ", "В очереди", "В работе", "В ожидании", "Выполнено", "Закрыто"] %}
+                {% for status in statuses %}
+                  {% set tasks_for_status = tasks | selectattr('status', 'equalto', status) | list %}
+                  {% set col_width = 460 if tasks_for_status|length > 0 else 260 %}
+                  <div class="column" style="flex: 1; min-width: 260px;">
+                    <div class="column-header">
+                      <div class="column-sum">Сумма: {{ tasks_for_status | sum(attribute='estimation') }}</div>
+                      <div class="column-title">{{ status }}</div>
+                    </div>
+                    <div class="column-content">
+                      {% for task in tasks_for_status %}
+                        {{ task_card(task, 'funding') }}
+                      {% endfor %}
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
     </div>
   </div>
-
+  <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.5); z-index:999;">
+    <div style="background:white; margin:10% auto; padding:20px; border-radius:8px; max-width:400px;">
+      <h3>Выберите поля для экспорта</h3>
+      <form id="exportForm">
+        {% for field in [
+          ('Номер', 'number'),
+          ('Название', 'name'),
+          ('Системы', 'systems'),
+          ('Дата', 'date'),
+          ('Исполнитель', 'assignee'),
+          ('Источник финансирования', 'funding_code'),
+          ('Оценка', 'estimation'),
+          ('Родительские задачи', 'parents'),
+          ('Метки', 'label')
+        ] %}
+          <div>
+            <input type="checkbox" name="fields" value="{{ field[1] }}" checked>
+            {{ field[0] }}
+          </div>
+        {% endfor %}
+        <button type="submit" style="margin-top:15px;">Скачать CSV</button>
+        <button type="button" onclick="document.getElementById('exportModal').style.display='none'" 
+                style="margin-left:10px; background:#eee;">Отмена</button>
+      </form>
+    </div>
+  </div>
   <script>
     function toggleSidebar() {
       document.getElementById('sidebar').classList.toggle('open');
@@ -396,6 +491,121 @@
       restoreActiveBoard();
     });
 
+    document.getElementById('exportBtn').onclick = function() {
+      document.getElementById('exportModal').style.display = 'block';
+    };
+
+    // Отправка формы — загрузка CSV-файла через hidden iframe или fetch + Blob
+    document.getElementById('exportForm').onsubmit = async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const selectedFields = Array.from(formData.getAll('fields')).join(',');
+
+      try {
+        const response = await fetch(`/export-csv?fields=${encodeURIComponent(selectedFields)}`, { method: 'GET' });
+        if (!response.ok) throw new Error(`Ошибка экспорта: ${response.statusText}`);
+        
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tasks_export_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } catch (err) {
+        alert('Не удалось экспортировать задачи: ' + err.message);
+      } finally {
+        document.getElementById('exportModal').style.display = 'none';
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const CACHE_KEY = 'projectCache';
+      let cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+
+      // Функция обновления UI по полученным данным о проекте
+      function updateFunding(taskEl, uuid, code, name) {
+          const fundingEl = taskEl.querySelector('.funding-info');
+          if (fundingEl && !fundingEl.dataset.filled) {
+              const fullText = `${code} — ${name}`;
+              fundingEl.innerHTML = `<small>${fullText}</small>`;
+              fundingEl.dataset.filled = 'true';
+          }
+      }
+
+      // Запрос статуса кэша
+      fetch('/api/v1/fetch-project-cache')
+          .then(r => r.json())
+          .then(data => {
+              if (data.status === 'loading') {
+                  console.log('Проекты обновляются...');
+              } else {
+                  // Если кэш пуст — пробуем из localStorage
+                  updateAllFundingFromCache();
+              }
+          });
+      
+      // Обновление всех задач в DOM на основе кэша
+      function updateAllFundingFromCache() {
+          const tasks = document.querySelectorAll('.kanban-task');
+          let loaded = 0;
+
+          tasks.forEach(task => {
+              const uuid = task.dataset.consumerUuid;
+              if (uuid && cache[uuid]) {
+                  const { code, name } = cache[uuid];
+                  updateFunding(task, uuid, code, name);
+                  loaded++;
+              }
+          });
+
+          // Показываем прогресс (в правом верхнем углу)
+          const progressEl = document.createElement('div');
+          progressEl.id = 'funding-progress';
+          progressEl.style.cssText = `
+              position: fixed;
+              top: 10px; right: 10px;
+              background: #3498db;
+              color: white;
+              padding: 6px 12px;
+              border-radius: 4px;
+              font-size: 12px;
+              z-index: 999;
+          `;
+          progressEl.textContent = `Загружено проектов: ${Object.keys(cache).length}`;
+          document.body.appendChild(progressEl);
+
+          // Запрос обновления в фоне
+          setInterval(() => {
+              fetch('/api/v1/fetch-project-cache')
+                  .then(r => r.json())
+                  .then(data => {
+                      if (data.status !== 'loading') {
+                          progressEl.textContent = `Готово: ${Object.keys(cache).length} проектов`;
+                          setTimeout(() => progressEl.remove(), 2000);
+                      }
+                  })
+                  .catch(() => {});
+          }, 5000);
+
+          // Проверка обновлений из кэша (если пришёл новый)
+          const eventSource = new EventSource('/api/v1/fetch-project-cache'); // можно расширить SSE-поддержку
+      }
+      function saveToCache(uuid, code, name) {
+          cache[uuid] = { code, name };
+          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+      }
+
+      // При клике на кнопку «Обновить» — очищаем кэш и запускаем принудительную подгрузку
+      document.querySelectorAll('.refresh-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+              fetch('/api/v1/fetch-project-cache?force=true')
+                  .then(() => localStorage.removeItem(CACHE_KEY))
+                  .catch(() => {});
+          });
+      });
+  });
     window.showKanbanBoard = showKanbanBoard;
     window.setTheme = setTheme;
     window.refreshTasks = refreshTasks;
