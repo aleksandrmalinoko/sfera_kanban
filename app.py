@@ -8,7 +8,6 @@ import csv
 import json
 import sqlite3
 import pickle
-from threading import Thread
 from flask import Response
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
@@ -55,9 +54,23 @@ tasks = []
 label_to_match = None
 selected_area = DEFAULT_AREA
 last_fetch_params = None
+projects_loading = False
+projects_loading_lock = Lock()
 
 fetch_jobs = {}
 fetch_jobs_lock = Lock()
+
+
+def _set_projects_done():
+    global projects_loading
+    with projects_loading_lock:
+        projects_loading = False
+
+
+def _set_projects_loading():
+    global projects_loading
+    with projects_loading_lock:
+        projects_loading = True
 
 
 def sort_by_order(grouped_items, order):
@@ -126,6 +139,7 @@ def run_fetch_job(job_id):
     def progress_callback(message):
         append_job_log(job_id, message)
 
+    _set_projects_loading()
     try:
         if mode == 'dates':
             calculated_label = generate_label(start_date, end_date)
@@ -135,10 +149,15 @@ def run_fetch_job(job_id):
                 calculated_label,
                 area,
                 progress_callback=progress_callback,
+                on_projects_done=_set_projects_done,
             )
             current_label = calculated_label
         else:
-            loaded_tasks = generate_tasks_label(label, area, progress_callback=progress_callback)
+            loaded_tasks = generate_tasks_label(
+                label, area,
+                progress_callback=progress_callback,
+                on_projects_done=_set_projects_done,
+            )
             current_label = label
 
         tasks = loaded_tasks
@@ -165,6 +184,13 @@ def run_fetch_job(job_id):
 @app.route('/')
 def query_page():
     return render_template('query.html', areas=AVAILABLE_AREAS, selected_area=selected_area)
+
+
+@app.route('/api/v1/projects-status')
+def get_projects_status():
+    with projects_loading_lock:
+        loading = projects_loading
+    return jsonify({"loading": loading})
 
 
 @app.route('/api/v1/fetch-project-cache', methods=['GET'])
@@ -286,19 +312,17 @@ def fetch_tasks():
     def progress_callback(message):
         collected_logs.append(message)
 
+    _set_projects_loading()
     try:
         if mode == 'dates':
             start_date = request.form.get('start_date')
             end_date = request.form.get('end_date')
             label = generate_label(start_date, end_date)
-            
-            force_reload_projects = (request.form.get("force_reload_projects") or "false").lower() == "true"
-            
             tasks = generate_tasks_dates(
                 start_date, end_date, label,
                 selected_area,
                 progress_callback=progress_callback,
-                force_reload_projects=force_reload_projects
+                on_projects_done=_set_projects_done,
             )
             label_to_match = label
             last_fetch_params = {
@@ -309,14 +333,11 @@ def fetch_tasks():
             }
         else:
             label = request.form.get('query_label')
-
-            force_reload_projects = (request.form.get("force_reload_projects") or "false").lower() == "true"
-
             tasks = generate_tasks_label(
-                label, 
-                selected_area, 
+                label,
+                selected_area,
                 progress_callback=progress_callback,
-                force_reload_projects=force_reload_projects
+                on_projects_done=_set_projects_done,
             )
             label_to_match = label
             last_fetch_params = {
@@ -349,16 +370,17 @@ def refresh_tasks():
     area = last_fetch_params.get('area', DEFAULT_AREA)
     selected_area = area if area in AVAILABLE_AREAS else DEFAULT_AREA
 
+    _set_projects_loading()
     try:
         if mode == 'dates':
             start_date = last_fetch_params.get('start_date')
             end_date = last_fetch_params.get('end_date')
             label = generate_label(start_date, end_date)
-            tasks = generate_tasks_dates(start_date, end_date, label, selected_area)
+            tasks = generate_tasks_dates(start_date, end_date, label, selected_area, on_projects_done=_set_projects_done)
             label_to_match = label
         else:
             label = last_fetch_params.get('label')
-            tasks = generate_tasks_label(label, selected_area)
+            tasks = generate_tasks_label(label, selected_area, on_projects_done=_set_projects_done)
             label_to_match = label
 
         return jsonify({'ok': True})
@@ -376,12 +398,16 @@ def kanban():
     grouped_systems = sort_systems(grouped_systems)
     grouped_funding = sort_funding(grouped_funding)
 
+    with projects_loading_lock:
+        loading = projects_loading
+
     return render_template(
         'kanban.html',
         grouped_tasks=grouped_tasks,
         grouped_systems=grouped_systems,
         grouped_funding=grouped_funding,
         label_to_match=label_to_match,
+        projects_loading=loading,
     )
 
 

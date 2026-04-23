@@ -382,10 +382,12 @@ def _generate_tasks_by_query(
     sfera_query: str,
     area: str,
     progress_callback=None,
-    force_reload_projects=False
+    force_reload_projects=False,
+    on_projects_done=None,
 ) -> list:
     """
-    Обновлённая функция. После загрузки задач запускает фоновую подгрузку UUID-проектов.
+    После загрузки задач запускает фоновую подгрузку UUID-проектов.
+    Когда фоновая загрузка завершена — пересохраняет pickle и вызывает on_projects_done().
     """
     token = get_sfera_token(progress_callback=progress_callback)
     if not token:
@@ -406,11 +408,14 @@ def _generate_tasks_by_query(
                 all_consumer_uuids.add(consumer_id)
             tasks_list.append(task)
 
-    # Запускаем фоновую подгрузку проектов
+    # Сохраняем в pickle сразу (с placeholder-значениями ⏳)
+    with open('tasks_dict.pickle', 'wb') as f:
+        pickle.dump(tasks_list, f)
+
+    _notify(progress_callback, f"Завершено. Всего задач: {len(tasks_list)}")
+
     def background_funding_load():
         try:
-            print(f"[DEBUG] consumer_uuids: {all_consumer_uuids}")
-            print(f"[DEBUG] type of uuids: {[type(u) for u in all_consumer_uuids][:5]}")
             funding_info = _get_funding_info_cached(
                 list(all_consumer_uuids),
                 token=token,
@@ -424,22 +429,31 @@ def _generate_tasks_by_query(
                     task["funding_name"] = name
         except Exception as e:
             _notify(progress_callback, f"Ошибка фоновой загрузки проектов: {e}")
+        finally:
+            # Пересохраняем pickle с актуальными данными о проектах
+            try:
+                with open('tasks_dict.pickle', 'wb') as f:
+                    pickle.dump(tasks_list, f)
+            except Exception:
+                pass
+            if on_projects_done:
+                on_projects_done()
 
-    Thread(target=background_funding_load, daemon=True).start()
+    if all_consumer_uuids:
+        Thread(target=background_funding_load, daemon=True).start()
+    else:
+        # Нечего загружать — сразу сигнализируем
+        if on_projects_done:
+            on_projects_done()
 
-    # Сохраняем в pickle (как раньше)
-    with open('tasks_dict.pickle', 'wb') as f:
-        pickle.dump(tasks_list, f)
-
-    _notify(progress_callback, f"Завершено. Всего задач: {len(tasks_list)}")
     return tasks_list
 
 
-def generate_tasks_label(query, area, progress_callback=None):
+def generate_tasks_label(query, area, progress_callback=None, on_projects_done=None):
     sfera_query = f"area%20%3D%20%27{area}%27%20and%20label%20%3D%20%27{query}%27"
-    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback)
+    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done)
 
 
-def generate_tasks_dates(start_date, end_date, label, area, progress_callback=None):
+def generate_tasks_dates(start_date, end_date, label, area, progress_callback=None, on_projects_done=None):
     sfera_query = f"area%20%3D%20%27{area}%27%20and%20dueDate%20%3C%3D%20%22{end_date}%22%20and%20dueDate%20%3E%3D%20%22{start_date}%22"
-    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback)
+    return _generate_tasks_by_query(sfera_query, area, progress_callback=progress_callback, on_projects_done=on_projects_done)

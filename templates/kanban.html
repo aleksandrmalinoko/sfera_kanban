@@ -521,90 +521,26 @@
     };
 
     document.addEventListener('DOMContentLoaded', () => {
-      const CACHE_KEY = 'projectCache';
-      let cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+      {% if projects_loading %}
+      // Проекты ещё загружаются в фоне — показываем индикатор и поллим статус
+      const badge = document.createElement('div');
+      badge.id = 'funding-loading-badge';
+      badge.style.cssText = 'position:fixed;top:10px;right:10px;background:#3498db;color:#fff;padding:6px 14px;border-radius:4px;font-size:13px;z-index:9999;pointer-events:none;';
+      badge.textContent = 'Загрузка проектов…';
+      document.body.appendChild(badge);
 
-      // Функция обновления UI по полученным данным о проекте
-      function updateFunding(taskEl, uuid, code, name) {
-          const fundingEl = taskEl.querySelector('.funding-info');
-          if (fundingEl && !fundingEl.dataset.filled) {
-              const fullText = `${code} — ${name}`;
-              fundingEl.innerHTML = `<small>${fullText}</small>`;
-              fundingEl.dataset.filled = 'true';
-          }
-      }
-
-      // Запрос статуса кэша
-      fetch('/api/v1/fetch-project-cache')
-          .then(r => r.json())
-          .then(data => {
-              if (data.status === 'loading') {
-                  console.log('Проекты обновляются...');
-              } else {
-                  // Если кэш пуст — пробуем из localStorage
-                  updateAllFundingFromCache();
+      const poll = setInterval(async () => {
+          try {
+              const r = await fetch('/api/v1/projects-status');
+              const data = await r.json();
+              if (!data.loading) {
+                  clearInterval(poll);
+                  badge.textContent = 'Проекты загружены, обновляю…';
+                  location.reload();
               }
-          });
-      
-      // Обновление всех задач в DOM на основе кэша
-      function updateAllFundingFromCache() {
-          const tasks = document.querySelectorAll('.kanban-task');
-          let loaded = 0;
-
-          tasks.forEach(task => {
-              const uuid = task.dataset.consumerUuid;
-              if (uuid && cache[uuid]) {
-                  const { code, name } = cache[uuid];
-                  updateFunding(task, uuid, code, name);
-                  loaded++;
-              }
-          });
-
-          // Показываем прогресс (в правом верхнем углу)
-          const progressEl = document.createElement('div');
-          progressEl.id = 'funding-progress';
-          progressEl.style.cssText = `
-              position: fixed;
-              top: 10px; right: 10px;
-              background: #3498db;
-              color: white;
-              padding: 6px 12px;
-              border-radius: 4px;
-              font-size: 12px;
-              z-index: 999;
-          `;
-          progressEl.textContent = `Загружено проектов: ${Object.keys(cache).length}`;
-          document.body.appendChild(progressEl);
-
-          // Запрос обновления в фоне
-          setInterval(() => {
-              fetch('/api/v1/fetch-project-cache')
-                  .then(r => r.json())
-                  .then(data => {
-                      if (data.status !== 'loading') {
-                          progressEl.textContent = `Готово: ${Object.keys(cache).length} проектов`;
-                          setTimeout(() => progressEl.remove(), 2000);
-                      }
-                  })
-                  .catch(() => {});
-          }, 5000);
-
-          // Проверка обновлений из кэша (если пришёл новый)
-          const eventSource = new EventSource('/api/v1/fetch-project-cache'); // можно расширить SSE-поддержку
-      }
-      function saveToCache(uuid, code, name) {
-          cache[uuid] = { code, name };
-          localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
-      }
-
-      // При клике на кнопку «Обновить» — очищаем кэш и запускаем принудительную подгрузку
-      document.querySelectorAll('.refresh-btn').forEach(btn => {
-          btn.addEventListener('click', () => {
-              fetch('/api/v1/fetch-project-cache?force=true')
-                  .then(() => localStorage.removeItem(CACHE_KEY))
-                  .catch(() => {});
-          });
-      });
+          } catch (_) {}
+      }, 2000);
+      {% endif %}
   });
     window.showKanbanBoard = showKanbanBoard;
     window.setTheme = setTheme;
