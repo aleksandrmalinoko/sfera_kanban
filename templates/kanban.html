@@ -178,7 +178,7 @@
   <div class="task{% if highlight %} task-highlight{% endif %}">
     <div>
       <strong>Номер:</strong>
-      <a href="https://tasks.example.local/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a>
+      <a href="{{ sfera_base_url }}/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a>
     </div>
     <div><strong>Название:</strong> <span class="task-name" title="{{ task.name }}">{{ task.name }}</span></div>
     {% if task.description | trim and task.description != ' ' %}
@@ -202,7 +202,7 @@
       <div><strong>Родительские задачи:</strong>
         <ul class="parents-list">
           {% for parent in task.parents %}
-            <li><a href="https://tasks.example.local/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>{% if parent.name %} — {{ parent.name }}{% endif %}</li>
+            <li><a href="{{ sfera_base_url }}/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>{% if parent.name %} — {{ parent.name }}{% endif %}</li>
           {% endfor %}
         </ul>
       </div>

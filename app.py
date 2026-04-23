@@ -21,7 +21,8 @@ from utils.app_config import (
     SYSTEM_ORDER,
     PROJECTS_ORDER,
     CACHE_PROJECTS_ENABLED,
-    RESOURCE_DIR
+    RESOURCE_DIR,
+    SFERA_BASE_URL,
 )
 from utils.sfera_api import (
     generate_tasks_dates, 
@@ -430,6 +431,7 @@ def kanban():
         grouped_funding=grouped_funding,
         label_to_match=label_to_match,
         projects_loading=loading,
+        sfera_base_url=SFERA_BASE_URL.rstrip('/'),
     )
 
 
