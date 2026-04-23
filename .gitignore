@@ -1,4 +1,11 @@
 /tasks_dict.pickle
-/venv/
 /tasks_dict_new.pickle
+/venv/
+/dist/
+/build/
+*.spec
+__pycache__/
+*.pyc
+*.pyo
+funding_cache.db
 config/app.ini
