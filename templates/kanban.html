@@ -140,21 +140,21 @@
     /* Доска всегда занимает всю ширину, при переполнении — горизонтальный скролл */
     .kanban-board { display: flex; gap: 8px; padding-right: 20px; box-sizing: border-box; flex: 1; min-height: 0; align-items: stretch; min-width: 100%; width: max-content; }
 
-    /* Заполненная колонка — фиксированная ширина, все одинаковые, не сжимается */
-    .column { display: flex; flex-direction: column; border: 1px solid var(--column-border); background-color: var(--column-bg); box-sizing: border-box; border-radius: var(--radius-xl); box-shadow: var(--card-shadow); min-height: 0; flex: 0 0 320px; }
+    /* Заполненная колонка — фиксированная ширина, все одинаковые */
+    .column { display: flex; flex-direction: column; border: 1px solid var(--column-border); background-color: var(--column-bg); box-sizing: border-box; border-radius: var(--radius-xl); box-shadow: var(--card-shadow); min-height: 0; width: 480px; }
     /* Пустая колонка — минимум помещает заголовок, при наличии места растягивается поровну */
-    .column.column-empty { flex: 1 1 140px; min-width: 140px; opacity: 0.6; }
+    .column.column-empty { flex: 1 1 auto; min-width: 140px; max-width: 320px; opacity: 0.6; }
     .column-header { padding: 10px; background-color: var(--column-header-bg); box-sizing: border-box; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
     .column-header .column-sum { font-weight: bold; margin-bottom: 5px; font-size: 13px; }
     .column-header .column-title { font-size: 15px; font-weight: bold; }
     .column.column-empty .column-header .column-sum { display: none; }
     .column-content { overflow-y: auto; overflow-x: hidden; padding: 10px; box-sizing: border-box; flex: 1; min-height: 0; }
 
-    /* Карточка задачи */
-    .task { background-color: var(--task-bg); margin-bottom: 8px; padding: 10px; border: 1px solid var(--task-border); border-radius: var(--radius-md); box-sizing: border-box; box-shadow: var(--card-shadow); font-size: 13px; }
-    .task a { color: var(--task-link); }
-    /* Название задачи — одна строка с обрезкой inline после метки, полное в title */
-    .task-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: calc(100% - 70px); vertical-align: bottom; }
+    /* Карточка задачи — чуть уже столбца (с отступами и ползунком) */
+    .task { background-color: var(--task-bg); margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--task-border); border-radius: var(--radius-md); box-sizing: border-box; box-shadow: var(--card-shadow); font-size: 13px; width: 450px; }
+    .task a { color: var(--task-link); word-break: break-word; }
+    /* Название задачи — перенос только части слова, не целиком */
+    .task-name { white-space: normal; overflow-wrap: anywhere; display: inline-block; width: 100%; max-width: 428px; }
     /* Список родительских задач без лишних отступов */
     .task .parents-list { margin: 2px 0 0 12px; padding: 0; list-style: disc; }
 
