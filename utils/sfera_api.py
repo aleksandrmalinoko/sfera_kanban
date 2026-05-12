@@ -114,6 +114,40 @@ def _request_record(uuid: str, token: str) -> Optional[Tuple[str, str]]:
     return None
 
 
+def _extract_consumer_uuid(consumer_raw) -> Optional[str]:
+    """Достаёт UUID источника финансирования из произвольного значения projectConsumer."""
+    if isinstance(consumer_raw, list):
+        consumer_id = consumer_raw[0] if consumer_raw else None
+    elif isinstance(consumer_raw, str):
+        consumer_id = consumer_raw.strip() or None
+    else:
+        consumer_id = None
+    if isinstance(consumer_id, str) and len(consumer_id) == 36:
+        return consumer_id.lower()
+    return None
+
+
+def _request_task_project_consumer(area: str, number: str, token: str) -> Optional[str]:
+    """Получает UUID projectConsumer для одной задачи по area + number."""
+    sfera_query = f"area%20%3D%20%27{area}%27%20and%20number%20%3D%20%27{number}%27"
+    url = (
+        f"{BASE_URL}/app/tasks/api/v1/entity-views"
+        f"?attributes=number%2CprojectConsumer&query={sfera_query}"
+    )
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    try:
+        response = _request_with_retries("GET", url, headers=headers, verify=False)
+        content = response.json().get('content', [])
+        if content:
+            return _extract_consumer_uuid(content[0].get('projectConsumer'))
+    except Exception:
+        pass
+    return None
+
+
 def _get_funding_info_cached(
     uuids: List[str],
     token: Optional[str] = None,
@@ -306,19 +340,7 @@ def _get_funding_info(sfera_token, consumer_id: str):
 
 def _build_task(sfera_token: str, task_data: dict, area: str) -> dict:
     try:
-        consumer_raw = task_data.get("projectConsumer")
-        # Если это список — берём первый элемент (если есть)
-        if isinstance(consumer_raw, list):
-            consumer_id = consumer_raw[0] if consumer_raw else None
-        elif isinstance(consumer_raw, str):
-            consumer_id = consumer_raw.strip() or None
-        else:
-            consumer_id = None
-
-        if consumer_id and len(consumer_id) == 36:  # UUID v4 length
-            consumer_id = consumer_id.lower()
-        else:
-            consumer_id = None
+        consumer_id = _extract_consumer_uuid(task_data.get("projectConsumer"))
     except Exception:
         consumer_id = None
 
@@ -423,17 +445,94 @@ def _generate_tasks_by_query(
 
     def background_funding_load():
         try:
+            # 1. Карта (area, number) → task: чтобы для родителей, попавших в выборку,
+            #    переиспользовать уже известный consumer_uuid без лишнего запроса.
+            task_index: Dict[Tuple[str, str], dict] = {}
+            for task in tasks_list:
+                key = (task.get("area"), str(task.get("number")))
+                if all(key):
+                    task_index[key] = task
+
+            # 2. Уникальные родители, для которых нужно узнать consumer_uuid.
+            parents_to_resolve: List[Tuple[str, str]] = []
+            seen_parent_keys = set()
+            for task in tasks_list:
+                for parent in task.get("parents") or []:
+                    p_area = parent.get("area")
+                    p_number = parent.get("number")
+                    if not (p_area and p_number):
+                        continue
+                    key = (p_area, str(p_number))
+                    if key in seen_parent_keys:
+                        continue
+                    seen_parent_keys.add(key)
+                    # Если родитель сам в выборке — consumer возьмём оттуда
+                    sibling = task_index.get(key)
+                    if sibling is not None:
+                        continue
+                    parents_to_resolve.append(key)
+
+            # 3. Запрашиваем consumer_uuid недостающих родителей параллельно.
+            parent_consumer_by_key: Dict[Tuple[str, str], Optional[str]] = {}
+            if parents_to_resolve:
+                _notify(
+                    progress_callback,
+                    f"Загрузка проектов родительских задач: {len(parents_to_resolve)}",
+                )
+                max_workers = min(8, len(parents_to_resolve))
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = {
+                        executor.submit(_request_task_project_consumer, p_area, p_number, token): (p_area, p_number)
+                        for p_area, p_number in parents_to_resolve
+                    }
+                    for future in as_completed(futures):
+                        key = futures[future]
+                        try:
+                            parent_consumer_by_key[key] = future.result()
+                        except Exception:
+                            parent_consumer_by_key[key] = None
+
+            # 4. Проставляем consumer_uuid каждому parent и собираем общий список UUID.
+            consumer_uuids = set(all_consumer_uuids)
+            for task in tasks_list:
+                for parent in task.get("parents") or []:
+                    p_area = parent.get("area")
+                    p_number = parent.get("number")
+                    if not (p_area and p_number):
+                        continue
+                    key = (p_area, str(p_number))
+                    sibling = task_index.get(key)
+                    if sibling is not None:
+                        parent_consumer = sibling.get("consumer_uuid")
+                    else:
+                        parent_consumer = parent_consumer_by_key.get(key)
+                    if parent_consumer:
+                        parent["consumer_uuid"] = parent_consumer
+                        consumer_uuids.add(parent_consumer)
+
+            # 5. Подтягиваем код и название проекта для всех UUID (задачи + родители).
             funding_info = _get_funding_info_cached(
-                list(all_consumer_uuids),
+                list(consumer_uuids),
                 token=token,
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
             )
+
+            # 6. Раскидываем funding по задачам и родителям.
             for task in tasks_list:
                 consumer_id = task.get("consumer_uuid")
                 if consumer_id and consumer_id in funding_info:
                     code, name = funding_info[consumer_id]
                     task["funding_code"] = code or "Без источника"
                     task["funding_name"] = name
+                for parent in task.get("parents") or []:
+                    p_consumer = parent.get("consumer_uuid")
+                    if p_consumer and p_consumer in funding_info:
+                        code, name = funding_info[p_consumer]
+                        parent["funding_code"] = code or "Без источника"
+                        parent["funding_name"] = name
+                    else:
+                        parent.setdefault("funding_code", "")
+                        parent.setdefault("funding_name", "")
         except Exception as e:
             _notify(progress_callback, f"Ошибка фоновой загрузки проектов: {e}")
         finally:
@@ -446,7 +545,10 @@ def _generate_tasks_by_query(
             if on_projects_done:
                 on_projects_done()
 
-    if all_consumer_uuids:
+    # Фоновая загрузка нужна, даже если у самих задач нет consumer'ов:
+    # их могут иметь родительские задачи.
+    has_parents = any(task.get("parents") for task in tasks_list)
+    if all_consumer_uuids or has_parents:
         Thread(target=background_funding_load, daemon=True).start()
     else:
         # Нечего загружать — сразу сигнализируем
