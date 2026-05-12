@@ -493,18 +493,55 @@ def mismatch_report():
     )
 
 
+def _task_fundings_list(task):
+    """Возвращает [{'code', 'name', 'uuid'}, ...] для задачи с фолбэком на legacy-поля."""
+    fundings = task.get('fundings') if isinstance(task.get('fundings'), list) else None
+    if fundings:
+        return fundings
+    code = task.get('funding_code') or ''
+    name = task.get('funding_name') or ''
+    if code or name:
+        return [{'code': code, 'name': name, 'uuid': None}]
+    return []
+
+
+def _parent_fundings_union(task):
+    """Уникальные источники родителей (по uuid; если uuid нет — по паре code+name)."""
+    by_uuid = {}
+    by_text = {}
+    ordered = []
+    for parent in task.get('parents') or []:
+        for f in parent.get('fundings') or []:
+            uuid = f.get('uuid')
+            code = f.get('code') or ''
+            name = f.get('name') or ''
+            if uuid:
+                if uuid in by_uuid:
+                    continue
+                by_uuid[uuid] = f
+                ordered.append(f)
+            else:
+                key = (code, name)
+                if not (code or name) or key in by_text:
+                    continue
+                by_text[key] = f
+                ordered.append(f)
+    return ordered
+
+
 @app.route('/export-csv')
 def export_csv():
     fields_param = request.args.get('fields', 'number,name,status,assignee,funding_code,estimation,date,systems,label,parents').split(',')
-    
+    use_parent_funding = request.args.get('use_parent_funding', 'false').lower() == 'true'
+
     # Валидация полей — только разрешённые
     allowed_fields = {
-        'number', 'name', 'description', 'status', 'assignee', 
+        'number', 'name', 'description', 'status', 'assignee',
         'systems', 'date', 'estimation', 'label', 'parents',
         'funding_code', 'funding_name'
     }
     selected_fields = [f for f in fields_param if f.strip() in allowed_fields]
-    
+
     # Генерация CSV
     output = StringIO()
     writer = csv.writer(output, quoting=csv.QUOTE_ALL)
@@ -524,15 +561,27 @@ def export_csv():
         'funding_code': 'Код Финансирования',
         'funding_name': 'Источник финансирования'
     }
-    
+
     headers = [field_labels[f] for f in selected_fields]
     writer.writerow(headers)
 
     for task in tasks:
+        # Определяем «эффективные» источники для строки CSV.
+        # Если use_parent_funding=true и у родителей есть известные источники —
+        # подменяем funding_code/funding_name на объединение источников родителей.
+        # Иначе используем источники самой задачи.
+        if use_parent_funding:
+            effective = _parent_fundings_union(task) or _task_fundings_list(task)
+        else:
+            effective = _task_fundings_list(task)
+
+        eff_codes = ', '.join((f.get('code') or '') for f in effective if (f.get('code') or '')) or ''
+        eff_names = ', '.join((f.get('name') or '') for f in effective if (f.get('name') or '')) or ''
+
         row = []
         for field in selected_fields:
             val = task.get(field)
-            
+
             # Преобразование сложных типов в строку
             if field == 'systems' and isinstance(val, list):
                 val = ', '.join(val) or ''
@@ -546,18 +595,23 @@ def export_csv():
                     val = ''
             elif field == 'estimation':
                 val = f'{val:.1f}' if val is not None else ''
-            
+            elif field == 'funding_code':
+                val = eff_codes
+            elif field == 'funding_name':
+                val = eff_names
+
             # Приведение к строке
             row.append(str(val) if val is not None else '')
-        
+
         writer.writerow(row)
 
     output.seek(0)
+    suffix = '_corrected' if use_parent_funding else ''
     return Response(
         output.getvalue(),
         mimetype='text/csv; charset=utf-8',
         headers={
-            "Content-Disposition": f"attachment; filename=tasks_export_{datetime.now().date()}.csv"
+            "Content-Disposition": f"attachment; filename=tasks_export{suffix}_{datetime.now().date()}.csv"
         }
     )
 

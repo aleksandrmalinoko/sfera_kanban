@@ -47,6 +47,42 @@
   <div class="topbar">
     <a class="btn" href="{{ url_for('kanban') }}">← К доске</a>
     <a class="btn" href="{{ url_for('mismatch_report') }}">Обновить</a>
+    <button class="btn" id="exportCorrectedBtn" type="button">Скачать CSV (с источниками родителей)</button>
+  </div>
+
+  <!-- Модалка выбора полей для экспорта -->
+  <div id="exportModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:999;">
+    <div style="background:white; margin:8% auto; padding:20px; border-radius:8px; max-width:460px;">
+      <h3 style="margin-top:0">Экспорт CSV</h3>
+      <div style="font-size:13px; color:#6b7280; margin-bottom:10px">
+        Выгружаются все задачи текущей выборки. В полях «Источник финансирования»
+        и «Код финансирования» подставляются источники родителей задачи. Если у
+        родителей источников нет — остаются источники самой задачи.
+      </div>
+      <form id="exportForm">
+        {% for field in [
+          ('Номер', 'number'),
+          ('Название', 'name'),
+          ('Системы', 'systems'),
+          ('Дата', 'date'),
+          ('Исполнитель', 'assignee'),
+          ('Код Финансирования', 'funding_code'),
+          ('Источник финансирования', 'funding_name'),
+          ('Оценка', 'estimation'),
+          ('Родительские задачи', 'parents'),
+          ('Метки', 'label')
+        ] %}
+          <div>
+            <input type="checkbox" name="fields" value="{{ field[1] }}" checked>
+            {{ field[0] }}
+          </div>
+        {% endfor %}
+        <div style="margin-top:15px">
+          <button type="submit" class="btn" style="background:var(--accent); color:#fff; border-color:var(--accent)">Скачать CSV</button>
+          <button type="button" class="btn" onclick="document.getElementById('exportModal').style.display='none'" style="margin-left:6px">Отмена</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <h1>Расхождение источников финансирования</h1>
@@ -172,5 +208,39 @@
   {% else %}
     <div class="empty">Расхождений нет — все задачи привязаны к источникам своих родителей. 🎉</div>
   {% endif %}
+
+  <script>
+    document.getElementById('exportCorrectedBtn').addEventListener('click', function() {
+      document.getElementById('exportModal').style.display = 'block';
+    });
+
+    document.getElementById('exportForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      const selectedFields = Array.from(formData.getAll('fields')).join(',');
+      if (!selectedFields) {
+        alert('Выберите хотя бы одно поле');
+        return;
+      }
+      try {
+        const url = `/export-csv?use_parent_funding=true&fields=${encodeURIComponent(selectedFields)}`;
+        const response = await fetch(url, { method: 'GET' });
+        if (!response.ok) throw new Error(`Ошибка экспорта: ${response.statusText}`);
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = `tasks_export_corrected_${new Date().toISOString().slice(0,10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(objectUrl);
+      } catch (err) {
+        alert('Не удалось экспортировать задачи: ' + err.message);
+      } finally {
+        document.getElementById('exportModal').style.display = 'none';
+      }
+    });
+  </script>
 </body>
 </html>
