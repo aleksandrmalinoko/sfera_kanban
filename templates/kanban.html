@@ -171,7 +171,10 @@
     .description-toggle { cursor: pointer; color: var(--description-link); text-decoration: underline; background: none; border: none; padding: 0; font-size: 1em; }
     .task-highlight { background-color: var(--highlight-bg); }
     .parent-funding { color: #6b7280; }
-    .parent-funding.mismatch { color: #d61f1f; font-weight: 600; }
+    .funding-mismatch { color: #d61f1f; font-weight: 600; }
+    .funding-mismatch a { color: inherit; }
+    .funding-list { margin: 0; padding-left: 18px; }
+    .funding-list li { margin: 0; }
   </style>
 </head>
 <body>
@@ -194,26 +197,48 @@
     <div><strong>Системы:</strong> {{ task.systems | join(', ') if task.systems is iterable and task.systems is not string else task.systems }}</div>
     <div><strong>Дата:</strong> {{ task.date }}</div>
     <div><strong>Исполнитель:</strong> {{ task.assignee }}</div>
-    <!-- Добавляем Источник финансирования (если данные есть) -->
-    {% if task.funding_code or task.funding_name %}  
-    <div><strong>Источник финансирования: </strong>
-      <span>{{ task.funding_code }}</span> — {{ task.funding_name }}</div>
+    {% set task_fundings = task.fundings if task.fundings is defined and task.fundings else [] %}
+    {% if not task_fundings and (task.funding_code or task.funding_name) %}
+      {% set task_fundings = [{'code': task.funding_code, 'name': task.funding_name}] %}
+    {% endif %}
+    {% set show_mismatch = task.funding_mismatch and not projects_loading %}
+    {% if task_fundings %}
+      <div class="{% if show_mismatch %}funding-mismatch{% endif %}">
+        <strong>Источник финансирования{% if task_fundings|length > 1 %} ({{ task_fundings|length }}){% endif %}:</strong>
+        {% if task_fundings|length == 1 %}
+          <span>{{ task_fundings[0].code }}</span>{% if task_fundings[0].name %} — {{ task_fundings[0].name }}{% endif %}
+        {% else %}
+          <ul class="funding-list">
+            {% for f in task_fundings %}
+              <li>{{ f.code }}{% if f.name %} — {{ f.name }}{% endif %}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
     {% endif %}
     <div><strong>Оценка:</strong> {{ task.estimation }}</div>
     {% if task.parents %}
-      {% set task_funding = task.funding_code %}
-      {% set task_funding_known = task_funding and task_funding not in ['⏳', 'Без источника'] %}
       <div><strong>Родительские задачи:</strong>
         <ul class="parents-list">
           {% for parent in task.parents %}
-            {% set parent_funding = parent.funding_code %}
-            {% set parent_funding_known = parent_funding and parent_funding not in ['⏳', 'Без источника'] %}
-            {% set mismatch = (not projects_loading) and task_funding_known and parent_funding_known and parent_funding != task_funding %}
+            {% set parent_fundings = parent.fundings if parent.fundings is defined and parent.fundings else [] %}
+            {% if not parent_fundings and (parent.funding_code or parent.funding_name) %}
+              {% set parent_fundings = [{'code': parent.funding_code, 'name': parent.funding_name}] %}
+            {% endif %}
             <li>
               <a href="{{ sfera_base_url }}/tasks/area/{{ parent.area }}/task/{{ parent.number }}" target="_blank" rel="noopener noreferrer">{{ parent.number }}</a>{% if parent.name %} — {{ parent.name }}{% endif %}
-              {% if parent_funding or parent.funding_name %}
-                <div class="parent-funding{% if mismatch %} mismatch{% endif %}">
-                  Проект: <span>{{ parent_funding }}</span>{% if parent.funding_name %} — {{ parent.funding_name }}{% endif %}
+              {% if parent_fundings %}
+                <div class="parent-funding">
+                  Проект:
+                  {% if parent_fundings|length == 1 %}
+                    <span>{{ parent_fundings[0].code }}</span>{% if parent_fundings[0].name %} — {{ parent_fundings[0].name }}{% endif %}
+                  {% else %}
+                    <ul class="funding-list">
+                      {% for f in parent_fundings %}
+                        <li>{{ f.code }}{% if f.name %} — {{ f.name }}{% endif %}</li>
+                      {% endfor %}
+                    </ul>
+                  {% endif %}
                 </div>
               {% endif %}
             </li>
