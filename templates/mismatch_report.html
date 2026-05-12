@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Отчёт: расхождение источников финансирования</title>
+  <style>
+    :root {
+      --bg: #f5f6fa;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --border: #d7dce4;
+      --accent: #245ec8;
+      --danger: #d61f1f;
+      --header-bg: #eef2f9;
+      --positive: #1f8a3a;
+    }
+    body { margin: 0; padding: 24px; font-family: Arial, sans-serif; background: var(--bg); color: var(--text); }
+    h1 { margin: 0 0 4px 0; font-size: 22px; }
+    h2 { margin: 28px 0 10px 0; font-size: 17px; }
+    .subtitle { color: var(--muted); margin-bottom: 18px; }
+    .topbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+    .btn { display: inline-block; padding: 6px 14px; border: 1px solid var(--border); border-radius: 999px; background: #fff; color: var(--text); text-decoration: none; font-size: 14px; cursor: pointer; }
+    .btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .summary { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 16px; }
+    .summary .card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; min-width: 200px; }
+    .summary .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .summary .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+    .summary .value.danger { color: var(--danger); }
+    .warn { background: #fff8e1; border: 1px solid #f0d28a; padding: 8px 12px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    th, td { padding: 8px 10px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); font-size: 13px; }
+    th { background: var(--header-bg); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+    td.num, td.est { white-space: nowrap; }
+    td.est { text-align: right; font-variant-numeric: tabular-nums; }
+    .funding-list { margin: 0; padding-left: 16px; }
+    .funding-list li { margin: 0; }
+    .task-fundings { color: var(--danger); }
+    a { color: var(--accent); }
+    .empty { padding: 18px; text-align: center; color: var(--muted); background: var(--card); border: 1px solid var(--border); border-radius: 8px; }
+    .increase { color: var(--positive); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="btn" href="{{ url_for('kanban') }}">← К доске</a>
+    <a class="btn" href="{{ url_for('mismatch_report') }}">Обновить</a>
+  </div>
+
+  <h1>Расхождение источников финансирования</h1>
+  <div class="subtitle">
+    Задачи, в которых множество источников финансирования не покрывается источниками их родительских задач.
+  </div>
+
+  {% if projects_loading %}
+    <div class="warn">Проекты ещё загружаются в фоне — данные могут быть неполными. Обновите страницу через несколько секунд.</div>
+  {% endif %}
+
+  <div class="summary">
+    <div class="card">
+      <div class="label">Всего задач с расхождением</div>
+      <div class="value {% if tasks|length %}danger{% endif %}">{{ tasks|length }}</div>
+    </div>
+    <div class="card">
+      <div class="label">Суммарная оценка</div>
+      <div class="value">{{ '%.1f'|format(total_estimation) }} ч</div>
+    </div>
+    {% if tasks_without_parent_funding %}
+      <div class="card">
+        <div class="label">Без источника у родителей</div>
+        <div class="value">{{ tasks_without_parent_funding }}</div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if tasks %}
+    <h2>Список задач</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Номер</th>
+          <th>Название</th>
+          <th>Исполнитель</th>
+          <th>Источники задачи</th>
+          <th>Источники родителей</th>
+          <th style="text-align:right">Оценка, ч</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tasks %}
+          {% set task_fundings = t.fundings if t.fundings is defined and t.fundings else [] %}
+          {% if not task_fundings and (t.funding_code or t.funding_name) %}
+            {% set task_fundings = [{'code': t.funding_code, 'name': t.funding_name}] %}
+          {% endif %}
+          {# Объединение источников родителей по uuid #}
+          {% set ns = namespace(parent_fundings={}) %}
+          {% for parent in t.parents or [] %}
+            {% for f in parent.fundings or [] %}
+              {% if f.uuid and f.uuid not in ns.parent_fundings %}
+                {% set _ = ns.parent_fundings.update({f.uuid: f}) %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          <tr>
+            <td class="num">
+              <a href="{{ sfera_base_url }}/tasks/area/{{ t.area }}/task/{{ t.number }}" target="_blank" rel="noopener noreferrer">{{ t.number }}</a>
+            </td>
+            <td>{{ t.name }}</td>
+            <td>{{ t.assignee }}</td>
+            <td class="task-fundings">
+              {% if task_fundings %}
+                <ul class="funding-list">
+                  {% for f in task_fundings %}
+                    <li>{{ f.code }}{% if f.name %} — {{ f.name }}{% endif %}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if ns.parent_fundings %}
+                <ul class="funding-list">
+                  {% for f in ns.parent_fundings.values() %}
+                    <li>{{ f.code }}{% if f.name %} — {{ f.name }}{% endif %}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}<span style="color:var(--muted)">нет данных</span>{% endif %}
+            </td>
+            <td class="est">{{ '%.1f'|format(t.estimation or 0) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" style="text-align:right; font-weight:600">Итого:</td>
+          <td class="est" style="font-weight:600">{{ '%.1f'|format(total_estimation) }}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <h2>Если бы у этих задач источники совпадали с родительскими</h2>
+    <div class="subtitle" style="margin-bottom:10px">
+      Для каждого источника финансирования родителей показано, на сколько часов он бы вырос,
+      если бы эти задачи были привязаны к источникам своих родителей. Если у задачи несколько
+      источников у родителей — оценка задачи засчитывается каждому из них.
+    </div>
+    {% if increases %}
+      <table>
+        <thead>
+          <tr>
+            <th>Код</th>
+            <th>Название</th>
+            <th style="text-align:right">Задач</th>
+            <th style="text-align:right">+часов</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for entry in increases %}
+            <tr>
+              <td class="num">{{ entry.code or '—' }}</td>
+              <td>{{ entry.name or '' }}</td>
+              <td class="est">{{ entry.tasks_count }}</td>
+              <td class="est increase">+{{ '%.1f'|format(entry.hours) }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty">У родительских задач не определены источники финансирования — прирост не подсчитан.</div>
+    {% endif %}
+  {% else %}
+    <div class="empty">Расхождений нет — все задачи привязаны к источникам своих родителей. 🎉</div>
+  {% endif %}
+</body>
+</html>

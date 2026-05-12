@@ -435,6 +435,64 @@ def kanban():
     )
 
 
+@app.route('/mismatch-report')
+def mismatch_report():
+    """Отчёт по задачам, в которых источники финансирования расходятся с родительскими."""
+    mismatched = [t for t in tasks if t.get('funding_mismatch')]
+    # Стабильная сортировка: сначала по убыванию оценки, потом по номеру.
+    mismatched.sort(key=lambda t: (-(t.get('estimation') or 0), str(t.get('number') or '')))
+
+    total_estimation = round(sum((t.get('estimation') or 0) for t in mismatched), 1)
+
+    # Прирост часов по источникам родительских задач.
+    # Если бы у задачи стояли источники её родителей, каждый из них «получил» бы
+    # estimation этой задачи (без деления — одна и та же оценка засчитывается
+    # каждому источнику родителей, как и сейчас работает кейс с несколькими
+    # источниками у одной задачи).
+    hours_by_parent_funding = {}
+    tasks_without_parent_funding = 0
+    for t in mismatched:
+        parent_fundings = {}
+        for parent in t.get('parents') or []:
+            for f in parent.get('fundings') or []:
+                uuid = f.get('uuid')
+                if uuid:
+                    parent_fundings[uuid] = f
+        if not parent_fundings:
+            tasks_without_parent_funding += 1
+            continue
+        est = t.get('estimation') or 0
+        for uuid, f in parent_fundings.items():
+            entry = hours_by_parent_funding.setdefault(uuid, {
+                'code': f.get('code', '') or '',
+                'name': f.get('name', '') or '',
+                'hours': 0.0,
+                'tasks_count': 0,
+            })
+            entry['hours'] += est
+            entry['tasks_count'] += 1
+
+    increases = sorted(
+        hours_by_parent_funding.values(),
+        key=lambda x: (-x['hours'], x['code']),
+    )
+    for entry in increases:
+        entry['hours'] = round(entry['hours'], 1)
+
+    with projects_loading_lock:
+        loading = projects_loading
+
+    return render_template(
+        'mismatch_report.html',
+        tasks=mismatched,
+        total_estimation=total_estimation,
+        increases=increases,
+        tasks_without_parent_funding=tasks_without_parent_funding,
+        projects_loading=loading,
+        sfera_base_url=SFERA_BASE_URL.rstrip('/'),
+    )
+
+
 @app.route('/export-csv')
 def export_csv():
     fields_param = request.args.get('fields', 'number,name,status,assignee,funding_code,estimation,date,systems,label,parents').split(',')
