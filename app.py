@@ -558,8 +558,8 @@ def export_csv():
         'estimation': 'Оценка (ч)',
         'label': 'Метки',
         'parents': 'Родительские задачи',
-        'funding_code': 'Код Финансирования',
-        'funding_name': 'Источник финансирования'
+        'funding_code': 'Источник финансирования',
+        'funding_name': 'Источник финансирования (полное)'
     }
 
     headers = [field_labels[f] for f in selected_fields]
