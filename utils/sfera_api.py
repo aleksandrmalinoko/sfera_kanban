@@ -143,9 +143,14 @@ def _extract_consumer_uuids(consumer_raw) -> List[str]:
     return uuids
 
 
-def _request_task_project_consumers(area: str, number: str, token: str) -> List[str]:
-    """Получает UUID-ы projectConsumer для одной задачи по area + number."""
-    sfera_query = f"area%20%3D%20%27{area}%27%20and%20number%20%3D%20%27{number}%27"
+def _request_task_project_consumers(number: str, token: str) -> List[str]:
+    """Получает UUID-ы projectConsumer для одной задачи по её number.
+
+    Важно: фильтра по area намеренно нет — area родителя в Sfera-ответе
+    у поля `parent` не всегда совпадает с area самой задачи (и не всегда
+    приходит), а номер задачи уникален в системе.
+    """
+    sfera_query = f"number%20%3D%20%27{number}%27"
     url = (
         f"{BASE_URL}/app/tasks/api/v1/entity-views"
         f"?attributes=number%2CprojectConsumer&query={sfera_query}"
@@ -461,33 +466,33 @@ def _generate_tasks_by_query(
 
     def background_funding_load():
         try:
-            # 1. Карта (area, number) → task: чтобы для родителей, попавших в выборку,
+            # 1. Карта number → task: чтобы для родителей, попавших в выборку,
             #    переиспользовать уже известные UUID-ы без лишнего запроса.
-            task_index: Dict[Tuple[str, str], dict] = {}
+            #    Ключ — только number: area родителя в Sfera-ответе ненадёжна.
+            task_index: Dict[str, dict] = {}
             for task in tasks_list:
-                key = (task.get("area"), str(task.get("number")))
-                if all(key):
-                    task_index[key] = task
+                number = task.get("number")
+                if number:
+                    task_index[str(number)] = task
 
             # 2. Уникальные родители, для которых нужно узнать consumer_uuids.
-            parents_to_resolve: List[Tuple[str, str]] = []
-            seen_parent_keys = set()
+            parents_to_resolve: List[str] = []
+            seen_parent_numbers: set = set()
             for task in tasks_list:
                 for parent in task.get("parents") or []:
-                    p_area = parent.get("area")
                     p_number = parent.get("number")
-                    if not (p_area and p_number):
+                    if not p_number:
                         continue
-                    key = (p_area, str(p_number))
-                    if key in seen_parent_keys:
+                    p_number = str(p_number)
+                    if p_number in seen_parent_numbers:
                         continue
-                    seen_parent_keys.add(key)
-                    if key in task_index:
+                    seen_parent_numbers.add(p_number)
+                    if p_number in task_index:
                         continue
-                    parents_to_resolve.append(key)
+                    parents_to_resolve.append(p_number)
 
             # 3. Запрашиваем consumer_uuids недостающих родителей параллельно.
-            parent_uuids_by_key: Dict[Tuple[str, str], List[str]] = {}
+            parent_uuids_by_number: Dict[str, List[str]] = {}
             if parents_to_resolve:
                 _notify(
                     progress_callback,
@@ -496,30 +501,29 @@ def _generate_tasks_by_query(
                 max_workers = min(8, len(parents_to_resolve))
                 with ThreadPoolExecutor(max_workers=max_workers) as executor:
                     futures = {
-                        executor.submit(_request_task_project_consumers, p_area, p_number, token): (p_area, p_number)
-                        for p_area, p_number in parents_to_resolve
+                        executor.submit(_request_task_project_consumers, p_number, token): p_number
+                        for p_number in parents_to_resolve
                     }
                     for future in as_completed(futures):
-                        key = futures[future]
+                        p_number = futures[future]
                         try:
-                            parent_uuids_by_key[key] = future.result() or []
+                            parent_uuids_by_number[p_number] = future.result() or []
                         except Exception:
-                            parent_uuids_by_key[key] = []
+                            parent_uuids_by_number[p_number] = []
 
             # 4. Проставляем consumer_uuids каждому parent и собираем общий список UUID.
             all_uuids = set(all_consumer_uuids)
             for task in tasks_list:
                 for parent in task.get("parents") or []:
-                    p_area = parent.get("area")
                     p_number = parent.get("number")
-                    if not (p_area and p_number):
+                    if not p_number:
                         continue
-                    key = (p_area, str(p_number))
-                    sibling = task_index.get(key)
+                    p_number = str(p_number)
+                    sibling = task_index.get(p_number)
                     if sibling is not None:
                         parent_uuids = list(sibling.get("consumer_uuids") or [])
                     else:
-                        parent_uuids = list(parent_uuids_by_key.get(key) or [])
+                        parent_uuids = list(parent_uuids_by_number.get(p_number) or [])
                     parent["consumer_uuids"] = parent_uuids
                     parent["consumer_uuid"] = parent_uuids[0] if parent_uuids else None
                     for uuid in parent_uuids:
