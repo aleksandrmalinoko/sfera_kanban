@@ -169,7 +169,6 @@
     .menu-button { position: fixed; bottom: 20px; left: 20px; width: 50px; height: 50px; background-color: var(--menu-button-bg); color: var(--menu-button-text); border: none; border-radius: 50%; z-index: 1002; cursor: pointer; font-size: 24px; line-height: 50px; text-align: center; }
     .description-content { display: none; margin-top: 5px; }
     .description-toggle { cursor: pointer; color: var(--description-link); text-decoration: underline; background: none; border: none; padding: 0; font-size: 1em; }
-    .task-highlight { background-color: var(--highlight-bg); }
     .parent-funding { color: #6b7280; }
     .funding-mismatch { color: #d61f1f; font-weight: 600; }
     .funding-mismatch a { color: inherit; }
@@ -179,8 +178,7 @@
 </head>
 <body>
   {% macro task_card(task, board_type) -%}
-  {% set highlight = task.label is defined and label_to_match in task.label %}
-  <div class="task{% if highlight %} task-highlight{% endif %}">
+  <div class="task">
     <div>
       <strong>Номер:</strong>
       <a href="{{ sfera_base_url }}/tasks/area/{{ task.area }}/task/{{ task.number }}" target="_blank" rel="noopener noreferrer">{{ task.number }}</a>
@@ -245,6 +243,8 @@
           {% endfor %}
         </ul>
       </div>
+    {% else %}
+      <div class="funding-mismatch">Нет родительской задачи</div>
     {% endif %}
     {% if task.label %}
       <div><strong>Метки:</strong> {{ task.label }}</div>

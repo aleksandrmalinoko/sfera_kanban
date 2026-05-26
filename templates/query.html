@@ -37,20 +37,6 @@
       font-size: 16px;
     }
 
-    .radio-group label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0;
-      cursor: pointer;
-    }
-
-    .radio-group input[type="radio"] {
-      margin: 0;
-      width: auto;
-      accent-color: #007bff;
-    }
-
     .query-form button {
       padding: 10px 20px;
       font-size: 16px;
@@ -70,16 +56,8 @@
       opacity: 0.7;
     }
 
-    .query-form .radio-group {
-      margin: 0 auto 20px;
-      display: flex;
-      justify-content: center;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-
     #dates-input {
-      display: none;
+      display: flex;
       gap: 10px;
       justify-content: center;
     }
@@ -171,26 +149,13 @@
     </div>
 
     <form id="fetch-form" action="/fetch-tasks" method="POST" onsubmit="return startFetch(event)">
+      <input type="hidden" name="mode" value="dates" />
       <select name="area" id="area-select">
         {% for area in areas %}
           <option value="{{ area }}" {% if area == selected_area %}selected{% endif %}>{{ area }}</option>
         {% endfor %}
       </select>
-      <h2>Выберите способ получения задач</h2>
-
-      <div class="radio-group">
-        <label>
-          <input type="radio" name="mode" value="label" checked onchange="toggleMode()"> По метке
-        </label>
-        <label>
-          <input type="radio" name="mode" value="dates" onchange="toggleMode()"> По диапазону дат
-        </label>
-      </div>
-
-      <div id="label-input">
-        <input list="week-options" name="query_label" id="week-select" type="text" placeholder="23.06-27.06.2025" />
-        <datalist id="week-options"></datalist>
-      </div>
+      <h2>Выберите диапазон дат</h2>
 
       <div id="dates-input">
         <input type="date" name="start_date" />
@@ -205,65 +170,12 @@
   <script>
     let statusPollInterval = null;
 
-    function formatDate(date) {
-      return date.toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit'
-      });
-    }
-
-    function getCurrentMonday(date) {
-      const day = date.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      const monday = new Date(date);
-      monday.setDate(date.getDate() + diff);
-      return monday;
-    }
-
-    function generateWeeks(count = 10) {
-      const datalist = document.getElementById('week-options');
-      const input = document.getElementById('week-select');
-      const currentMonday = getCurrentMonday(new Date());
-
-      for (let i = -count; i <= count; i++) {
-        const monday = new Date(currentMonday);
-        monday.setDate(monday.getDate() + i * 7);
-
-        const friday = new Date(monday);
-        friday.setDate(friday.getDate() + 4);
-
-        const label = `${formatDate(monday)}-${formatDate(friday)}.${friday.getFullYear()}`;
-        const option = document.createElement('option');
-        option.value = label;
-        datalist.appendChild(option);
-
-        if (i === 0) {
-          input.value = label;
-        }
-      }
-    }
-
-    function toggleMode() {
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      document.getElementById('label-input').style.display = mode === 'label' ? 'block' : 'none';
-      document.getElementById('dates-input').style.display = mode === 'dates' ? 'flex' : 'none';
-    }
-
     function validateForm() {
-      const mode = document.querySelector('input[name="mode"]:checked').value;
-      if (mode === 'dates') {
-        const start = document.querySelector('[name="start_date"]').value;
-        const end = document.querySelector('[name="end_date"]').value;
-        if (!start || !end) {
-          alert('Пожалуйста, выберите начальную и конечную дату.');
-          return false;
-        }
-      } else {
-        const label = document.getElementById('week-select').value.trim();
-        if (!label) {
-          alert('Пожалуйста, выберите или введите метку.');
-          return false;
-        }
+      const start = document.querySelector('[name="start_date"]').value;
+      const end = document.querySelector('[name="end_date"]').value;
+      if (!start || !end) {
+        alert('Пожалуйста, выберите начальную и конечную дату.');
+        return false;
       }
       return true;
     }
@@ -375,8 +287,6 @@
 
       return false;
     }
-
-    generateWeeks();
   </script>
 </body>
 </html>
